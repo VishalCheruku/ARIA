@@ -1,0 +1,19 @@
+# --- Copilot repo gitignore ---
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+data/lexical_idf.json
+
+# Node
+node_modules/
+dist/
+
+# Env & secrets
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db

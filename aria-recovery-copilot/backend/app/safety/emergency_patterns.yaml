@@ -1,0 +1,171 @@
+# ARIA Recovery Copilot — emergency pattern configuration (spec §9.1, Stage 1)
+#
+# Reviewed/extended without redeploying core logic. Patterns are case-insensitive
+# Python regular expressions matched against the raw user message (and a lightly
+# normalized copy that collapses letter elongation like "sooo" -> "soo").
+#
+# MATCHING PHILOSOPHY: conservative in the clinical sense — err toward false
+# positives, NEVER false negatives (spec §9.1). A pattern that occasionally
+# flags a non-emergency is acceptable; a missed emergency is not.
+#
+# Notes on writing patterns:
+# - Apostrophes are optional everywhere (`can'?t`, `won'?t`) so "cant breathe"
+#   and "can't breathe" both match.
+# - Word boundaries anchor short dangerous words ("fainted", "seizure").
+# - Casual / adversarial phrasing still matches because patterns key on the
+#   symptom pair (site + severity), not on tone: "lol my chest kinda hurts"
+#   matches the chest-pain pattern.
+# - Common fragments ("chest pain", "cant breathe") match on their own.
+
+version: 1
+
+categories:
+
+  cardiac_emergency:
+    label: 'possible cardiac emergency (chest pain / pressure)'
+    patterns:
+      - '\b(heart\s+attack|cardiac\s+arrest|stemi)\b|\bhaving\s+(an?\s+)?(mi|stemi)\b'
+      - '\b(chest|breast|sternum|left\s+arm|left\s+shoulder)\b[^.?!]{0,40}\b(pain|pains|painful|hurts?|hurt|aching|ache|pressure|pressing|tight|tightness|heavy|heaviness|crush(ed|ing)?|squeez(e|ing)|cramping|burning|stabbing|constricted|weight)\b'
+      - '\b(pain|pressure|tightness|heaviness|crushing|squeezing)\b[^.?!]{0,40}\b(chest|breast|sternum)\b'
+      - '\bheart\b[^.?!]{0,30}\b(racing|pounding|beating\s+(so\s+|really\s+|very\s+|super\s+|too\s+)?(fast|hard|out\s+of\s+(my\s+)?chest)|fluttering\s+badly|skipping\s+beats)\b'
+      - '\b(pulse|heartbeat)\b[^.?!]{0,30}\b(very\s+fast|really\s+fast|racing|irregular|all\s+over\s+the\s+place)\b'
+      - '\bchest\b[^.?!]{0,40}\b(like\s+)?(an?\s+elephant|a\s+ton\s+of\s+bricks|a\s+ton)\b|\b(an?\s+elephant|a\s+ton)\b[^.?!]{0,25}\b(sitting\s+on\s+)?(my\s+)?chest\b'
+      - '\bchest\s+is\s+(killing|tight|heavy|burning)\b'
+      - '\b(angina|trophonin|troponin)\b'
+
+  breathing_emergency:
+    label: 'possible breathing emergency'
+    patterns:
+      - '\bc(?:an|a)n?''?t\s+(?:hardly\s+)?(breathe|breath|breathing|catch\s+my\s+breath|get\s+air|get\s+any\s+air)\b'
+      - '\bcant\s+(breathe|breath|breathing|catch\s+my\s+breath|get\s+air)\b'
+      - '\b(not|no|struggling\s+for|struggling\s+to|trouble|difficulty|difficult|hard\s+to|hard\s+time|fighting\s+for|gasping\s+for)\b[^.?!]{0,20}\b(breath|breathing|breathe|air|oxygen)\b'
+      - '\b(short(ness)?\s+of\s+breath|short\s+of\s+breath|breathless|out\s+of\s+breath|winded\s+badly|can''t\s+catch\s+my\s+breath)\b'
+      - '\b(gasping|gulping\s+for\s+air|suffocat(e|ing)|choking|air\s+hungry)\b'
+      - '\bbreathing\b[^.?!]{0,30}\b(stopped|stopping|badly|worse|worsening|getting\s+worse|laboured|labored|shallow\s+and\s+fast)\b'
+      - '\bwheezi(ng|y)\b[^.?!]{0,25}\b(badly|terribl|severe|a\s+lot|lots|worse|wont\s+stop|won''t\s+stop|can''t)\b'
+      - '\bblue\s+(lips|fingertips|fingers|toes|face)\b'
+      - '\bo2\b[^.?!]{0,20}\b(low|dropping|dropped)\b|\bspo2\b[^.?!]{0,20}\b\d{2}\b'
+      - '\bcant\s+catch\s+my\s+breath\b'
+
+  bleeding_emergency:
+    label: 'possible uncontrolled bleeding'
+    patterns:
+      - '\b(won''t|wont|wouldn''t|wouldnt|doesn''t|doesnt|didn''t|didnt)\s+stop\s+(bleeding|blood)\b'
+      - '\bbleeding\b[^.?!]{0,40}\b(won''t|wont|doesn''t|doesnt|didn''t|didnt|still|heavily|heavy|a\s+lot|lots|non[-\s]?stop|badly|profuse|gushing|spurting|soaking|pooling|keeps?\s+(coming\s+back|returning))\b'
+      - '\b(blood)\b[^.?!]{0,30}\b(gushing|spurting|pouring|pooling|soaking|streaming|non[-\s]?stop|keeps?\s+coming)\b'
+      - '\b(gushing|spurting)\s+(blood|from)\b'
+      - '\bcough(ed|ing|s)?\s+(up\s+)?blood\b|\bvomit(ed|ing|s)?\s+(up\s+)?blood\b|\bblood\s+in\s+(my\s+)?(vomit|puke|cough|sputum|urine|pee|stool|poop)\b'
+      - '\b(black|tarry)\s+(stool|poop|poo)\b|\b(stool|poop|poo)\s+(is\s+|are\s+|looks?\s+)?(black|tarry)\b|\bbloody\s+(stool|poop|urine|pee)\b'
+      - '\bwound\b[^.?!]{0,30}\b(won''t|wont|still)\b[^.?!]{0,20}\b(bleeding|oozing\s+(a\s+lot|heavily|non[-\s]?stop))\b'
+      - '\bstitches?\b[^.?!]{0,30}\b(bleeding|popped|burst\s+open|open)\b'
+      - '\bincision\b[^.?!]{0,30}\b(bleeding|popped\s+open|burst\s+open|open(ed)?\s+up)\b'
+      - '\bheavy\s+(period|menstrual)\s+(bleeding|flow)\s+(that\s+)?won''t\s+stop\b'
+      - '\bbleed(s|ing)?\s+through\b|\bsoaking\s+through\b[^.?!]{0,30}\b(dress|bandage|band aid|cloth|gauze)\b'
+
+  consciousness_emergency:
+    label: 'possible fainting / loss of consciousness'
+    patterns:
+      - '\b(passed\s+out|passing\s+out|passed\s+away\s+for\s+a\s+second|fainted|fainting|feeling\s+like\s+(i''?m|im)\s+going\s+to\s+(pass\s+out|faint)|about\s+to\s+(pass\s+out|faint)|black(ed)?\s+out|blacking\s+out|blacked\s+out|knocked\s+out|lost\s+consciousness|loss\s+of\s+consciousness|unconscious)\b'
+      - '\b(won''t|wont|doesn''t|doesnt|can''t|cant)\s+(wake\s+up|open\s+(his|her|their|my)\s+eyes)\b|\bunresponsive\b|\bnot\s+responding\b[^.?!]{0,30}\b(at\s+all|to\s+(me|voice|touch))\b'
+      - '\bcollapsed\b|\bcollapsing\b'
+      - '\bsevere\s+dizziness\b[^.?!]{0,40}\b(standing|walking|now|suddenly)\b'
+      - '\b(blackout|blacked\s+out\s+(twice|again|earlier|today))\b'
+      - '\bfelt\s+faint\s+and\s+(fell|hit\s+(my|the)\s+head)\b'
+
+  stroke_emergency:
+    label: 'possible stroke signs (FAST)'
+    patterns:
+      - '\b(having|get|getting|feel(s|ing)?\s+like\s+i.?m\s+hav\w*|think\s+i.?m\s+hav\w*)\s+(a\s+)?(stroke|brain\s+attack)\b'
+      - '\bis\s+this\s+a\s+stroke\b|\bsigns\s+of\s+a\s+stroke\s+(right\s+)?now\b|\bstroke\s+(happening|starting)\s+now\b'
+      - '\bslurr(ed|ing)?\s+(speech|words|my\s+words)\b|\bspeech\s+(is\s+)?(suddenly\s+|all\s+of\s+a\s+sudden\s+)?slurred\b|\bwords\s+(are\s+|am\s+)?coming\s+out\s+(wrong|slurred|jumbled)\b'
+      - '\b(face|mouth|eye)\b[^.?!]{0,25}\b(droop(s|ing|ed)?|dropped|sagging|sagged|crooked|twisted)\b'
+      - '\b(one|1|left|right)\s+(side|arm|hand|leg|foot)\b[^.?!]{0,30}\b(weak|weaker|weakness|numb|numbness|paralyz(ed|ed)?|paralys(ed|ed)?|dead\s+arm|won''t\s+move|wont\s+move|can''t\s+move|cant\s+move|heavy\s+and\s+numb)\b'
+      - '\b(can''t|cant|cannot|unable\s+to)\s+(move|lift|feel)\s+(my|his|her|their)?\s*(left|right|one|other)?\s*(arm|leg|hand|foot|side|face|fingers?)\b'
+      - '\b(sudden|suddenly|suddnely)\s+(very\s+|completely\s+|totally\s+|a\s+bit\s+)?(confus(ed|ion)|disorient(ed|ation)|not\s+making\s+sense|garbled)\b'
+      - '\b(worst|sudden|thunderclap)\s+headache\b|\bheadache\b[^.?!]{0,30}\b(worst\s+of\s+my\s+life|like\s+an\s+explosion|explosive|thunderclap)\b'
+      - '\bcan''?t\s+(lift|raise)\s+(my\s+)?(arm|arms|hand)\b|\bcan''?t\s+(smile|speak|talk\s+properly|find\s+words)\b'
+      - '\bface\s+(feels|went|gone)\s+numb\b|\btongue\s+(feels|went|is)\s+(numb|thick)\b'
+      - '\bvision\s+(went|gone|is)\s+(black|double|blurry)\s+(suddenly|in\s+one\s+eye)\b|\bsudden\s+(double\s+)?vision\s+loss\b'
+
+  allergic_emergency:
+    label: 'possible severe allergic reaction / anaphylaxis'
+    patterns:
+      - '\banaphyla(xis|ctic|ctoid)\b'
+      - '\b(throat|tongue|lips|face|neck)\b[^.?!]{0,30}\b(swelling|swelling\s+up|swollen|closing\s+up|closing|puffing\s+up|ballooning)\b'
+      - '\b(swelling|swollen)\s+(up\s+)?(of\s+|in\s+)?(my\s+)?(throat|tongue|lips|face)\b'
+      - '\bmy\s+throat\s+(is|feels)\s+(closing|tight|swollen|sealed)\b'
+      - '\bhives\b[^.?!]{0,60}\b(breath|breathing|swell|swelling|all\s+over|everywhere|spreading\s+fast)\b'
+      - '\b(rash|hives|itching)\b[^.?!]{0,50}\b(can''t|cant|trouble|difficulty)\b[^.?!]{0,20}\bbreath'
+      - '\breaction\s+to\s+(my\s+)?(medicine|medication|drug|antibiotic)\b[^.?!]{0,40}\b(swelling|hives|rash|breath|throat|racing)\b'
+      - '\btongue\s+feels\s+too\s+big\b'
+
+  self_harm_emergency:
+    label: 'possible self-harm / suicidal ideation'
+    patterns:
+      - '\b(kill|killing)\s+(myself|me)\b|\bsuicid(e|al)\b|\bend(ing)?\s+(my|it\s+all|my\s+own)\s+(life|life\b)\b|\btake\s+my\s+own\s+life\b'
+      - '\b(want|wanted|wanna|going|plan|planning)\s+to\s+die\b|\bbetter\s+off\s+dead\b|\bwish\s+i\s+was\s+dead\b|\bdon''?t\s+wanna\s+(live|be\s+alive|wake\s+up)\b|\bno\s+reason\s+to\s+live\b|\bnot\s+worth\s+living\b'
+      - '\b(hurt|harm|cut(ting)?|burn(ing)?|hang)\s+myself\b|\bself[-\s]?harm\b|\bself[-\s]?harming\b'
+      - '\b(overdose|overdosed|took\s+(all|too\s+many)\s+(of\s+the\s+|my\s+)?(pills|tablets|meds|medicines)|swallowed\s+(all|the\s+whole)\s+(bottle|strip|sheet))\b'
+      - '\bhope\s+i\s+don''?t\s+wake\s+up\b|\bwish\s+the\s+pain\s+would\s+just\s+end\s+me\b'
+      - '\b(omg|idk)\b[^.?!]{0,30}\b(wanna|want\s+to)\s+die\b'
+
+  seizure_emergency:
+    label: 'possible seizure'
+    patterns:
+      - '\b(seizure|seizures|convulsion|convulsions|fits?\s+that\s+won''?t\s+stop|status\s+epilepticus)\b'
+      - '\b(having|had)\s+a\s+(fit|seizure)\b'
+      - '\b(shaking|twitching)\s+uncontrollably\b|\bwhole\s+body\s+(is\s+)?(shaking|convulsing|jerking)\b'
+      - '\beyes\s+rolled\s+back\b[^.?!]{0,30}\b(shaking|jerking|unresponsive)\b'
+
+  severe_infection_emergency:
+    label: 'possible sepsis / severe infection'
+    patterns:
+      - '\b(having|develop(ed|ing)?|looks?\s+like|seems\s+like|signs\s+of)\s+(sepsis|septic|septicemia|severe\s+infection)\b'
+      - '\bsepsis\b[^.?!]{0,20}\b(now|again|coming\s+back|returning)\b'
+      - '\bfever\b[^.?!]{0,40}\b(10[3-9](\.\d)?|10[3-9]\s*(f|degrees)|forty\b|40\s*degrees|very\s+high\s+fever|wont\s+break|won''t\s+break|not\s+coming\s+down|spiking)\b'
+      - '\btemp(erature)?\b[^.?!]{0,20}\b(10[3-9])\b'
+      - '\bburning\s+up\b[^.?!]{0,40}\b(shiver|rigor|chills|confus)\b'
+      - '\b(confus(ed|ion)|drowsy|sleepy\s+all\s+the\s+time|lethargic)\b[^.?!]{0,60}\b(fever|feverish|infection|shivering|rigors)\b'
+      - '\b(wound|incision)\b[^.?!]{0,40}\b(pus|green|yellow\s+discharge|foul|smells?\s+(bad|awful|horrible)|spreading\s+red|red\s+streaks?|streaking|hot\s+and\s+(red|hard))\b'
+      - '\b(red\s+streaks?)\b[^.?!]{0,30}\b(from|up|toward)\b'
+
+  diabetic_emergency:
+    label: 'possible severe hypo/hyperglycemia'
+    patterns:
+      - '\b(sugar|glucose)\b[^.?!]{0,20}\b(dropped|dropping|crashed|down\s+to|fell\s+to|at)\s*(only\s+|to\s+)?(\d{1,2}\b|forty|fifty|thirty|thirt)\b'
+      - '\b(sugar|glucose)\b[^.?!]{0,30}\b(won''t|wont|not\s+going|refuses)\s+(up|down|to\s+come)\b'
+      - '\bhypo(glycemic)?\b[^.?!]{0,30}\b(unconscious|confused|won''t|wont|not\s+waking)\b'
+      - '\bshaking\s+and\s+(sweating|confused|about\s+to\s+pass\s+out)\b[^.?!]{0,40}\b(insulin|sugar|diabet)\b'
+      - '\bketones\b[^.?!]{0,30}\b(high|moderate|large)\b|\bmy\s+breath\s+smells\s+like\s+(nail\s+polish|fruit|acetone)\b'
+      - '\bvomiting\b[^.?!]{0,30}\b(insulin|ketones|sugar\s+is\s+high)\b'
+
+  clot_emergency:
+    label: 'possible blood clot (DVT/PE)'
+    patterns:
+      - '\b(calf|leg|thigh|groin)\b[^.?!]{0,40}\b(swollen|swelling|swells)\b[^.?!]{0,40}\b(pain|hurts|tender|hot|warm\s+to\s+touch|red|hard)\b'
+      - '\b(one|left|right)\s+leg\b[^.?!]{0,40}\b(swollen|bigger|larger)\b[^.?!]{0,40}\b(than\s+(the\s+)?other|painful|hot|red)\b'
+      - '\bchest\s+pain\b[^.?!]{0,60}\b(swollen|painful)\s+(leg|calf)\b|\bpainful\s+(leg|calf)\b[^.?!]{0,60}\b(short(ness)?\s+of\s+breath|breathless|breathing)\b'
+
+  overdose_poisoning_emergency:
+    label: 'possible overdose / poisoning'
+    patterns:
+      - '\b(took|swallowed|ate|drank)\b[^.?!]{0,15}\b(all\s+(my|of\s+my|of\s+the)?|too\s+many|the\s+whole|entire)\b[^.?!]{0,25}\b(pills|tablets|meds|medicines|bottle|strip|sheet)\b'
+      - '\b(double\s+dose)\b[^.?!]{0,40}\b(blood\s+thinn\w*|warfarin|apixaban|clopidogrel|insulin|aspirin)\b'
+      - '\boverdose[d]?\b|\bpoison(ing|ed)\b|\bdrank\s+(the\s+)?(chemical|bleach|phenyl|acid)\b'
+
+  critical_trauma_emergency:
+    label: 'possible serious injury after discharge'
+    patterns:
+      - '\b(fell|fall|slipped)\b[^.?!]{0,50}\b(hit\s+(my|the|his|her)\s+head|can''t|cant\s+get\s+up|won''t|wont\s+move|broke|crack(ed)?\s+bone)\b'
+      - '\bbroke\s+(my|a)\b[^.?!]{0,20}\b(arm|leg|hip|bone|rib)\b'
+      - '\bhead\s+injur(y|ies)\b|\bvomit(ed|ing)\s+after\s+(hitting|banging)\s+my\s+head\b'
+
+# Phrases that should be stripped before matching to reduce false positives
+# from negations of the form "no chest pain", "denies chest pain". If a
+# NEGATED match is the ONLY match, the message is treated as non-emergency.
+negation_guard:
+  prefixes:
+    - '\bno\s+(more\s+)?(chest\s+pain|difficulty\s+breathing|breathing\s+problems)\b'
+    - '\b(not|nvr|never)\s+(having\s+)?(chest\s+pain|bleeding)\b'
+    - '\bwithout\s+(chest\s+pain|fever)\b'
+    - '\bden(ies|ied)\s+(chest\s+pain|fever|breathlessness)\b'

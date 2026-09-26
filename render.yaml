@@ -1,0 +1,57 @@
+# ARIA platform — Render Blueprint: ONE web service running everything.
+# The Docker image contains the main Node/Express app AND the Copilot
+# (FastAPI child process proxied at /copilot). Connect this repo as a
+# Blueprint in Render (New + > Blueprint) and fill in the `sync: false`
+# values. Health check uses the main app's /health (which also reports
+# the Copilot child's status).
+#
+# The Copilot needs its knowledge base seeded once against the same Atlas
+# cluster (database aria_copilot): run aria-recovery-copilot/backend/scripts/
+# seed_kb.py --provider zai and create_vector_index.py from your machine.
+
+services:
+  - type: web
+    name: aria-platform
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    plan: starter          # pick a plan that fits; starter is fine for a pilot
+    envVars:
+      # --- main app ---
+      - key: MONGODB_URI
+        sync: false
+      - key: AUTH_TOKEN_SECRET
+        generateValue: true
+      - key: AUTH_ALLOW_REGISTRATION
+        value: "false"
+      - key: NODE_ENV
+        value: production
+      # --- Copilot (child process inherits these) ---
+      - key: COPILOT_SIGNING_SECRET
+        generateValue: true   # one service -> main app signs, Copilot verifies the same env value
+      - key: COPILOT_ENABLED
+        value: "true"
+      - key: MAIN_BACKEND_URL
+        value: "http://127.0.0.1:10000"   # Copilot calls this same service's context-summary/alerts
+      - key: CORS_ORIGINS
+        value: "http://localhost:5000"
+      - key: ZAI_API_KEY
+        sync: false
+      - key: ZAI_MODEL
+        value: glm-5.3-flash
+      - key: EMBEDDING_PROVIDER
+        value: zai
+      - key: EMBEDDING_MODEL
+        value: embedding-3
+      - key: EMBEDDING_DIMENSIONS
+        value: "1024"
+      - key: MONGODB_DB
+        value: aria_copilot
+      # --- Twilio (main app's existing SMS/voice pipeline) ---
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
