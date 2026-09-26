@@ -1,0 +1,31 @@
+
+SUNRISE MULTISPECIALITY HOSPITAL
+IP DISCHARGE SUMMARY
+
+Name: Mr. Rajesh Pillai
+Age/Sex: 58/M
+Mobile: 098450-66778
+UHID: SH-2026-11452
+DOA: 21-Aug-2026
+DOD: 27-Aug-2026
+
+FINAL DIAGNOSIS : Acute inferior wall myocardial infarction with Type 2 Diabetes Mellitus
+
+Past history : Hypertension since 8 years, smoker
+
+VITALS ON DISCHARGE
+BP 132/84 mmHg, PR 82/min, Sp02 97%, Temp 98.6 F
+
+TREATMENT GIVEN
+1) Tab Ecospirin 75 mg OD
+2) Tab Atorvastatin 40 mg HS
+3) Tab Clopidogrel 75 mg OD
+4) Tab Metoprolol 25 mg BD
+5) Inj Enoxaparin 40 mg SC BD
+6) Tab Pantoprazole 40 mg OD
+
+ADVICE
+Continue medicines, review cardiology OPD after 1 week.
+
+Dr. Harish Chandra
+MD (Medicine), Consultant Cardiologist

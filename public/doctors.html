@@ -1,0 +1,1176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#e8e6e0" />
+  <meta name="color-scheme" content="light" />
+  <title>The Doctor · Dr. Arjun Mehta · ARIA AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Italiana&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Marcellus&family=Oswald:wght@200;300;400;500&family=Archivo:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e8e6e0;
+      --cream: #f6f4ef;
+      --ink: #33352f;
+      --ink-soft: #6f6d63;
+      --hairline: rgba(51, 53, 47, .16);
+      --maroon: #6d2c3f;
+      --f-display: "Italiana", "Bodoni MT", "Didot", Georgia, serif;
+      --f-serif: "Cormorant Garamond", "Palatino Linotype", Georgia, serif;
+      --f-body: "Marcellus", "Palatino Linotype", Georgia, serif;
+      --f-cond: "Oswald", "Arial Narrow", Arial, sans-serif;
+      --f-grotesk: "Archivo", "Helvetica Neue", Arial, sans-serif;
+      --f-mono: "Space Mono", "Courier New", monospace;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: auto; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--f-grotesk);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    ::selection { background: #6d2c3f33; }
+
+    /* ============================= PRELOADER ============================= */
+    #loader {
+      position: fixed; inset: 0; z-index: 90;
+      background: var(--bg);
+      display: grid; place-items: center;
+      transition: transform 1s cubic-bezier(.77, 0, .18, 1);
+    }
+    #loader.done { transform: translateY(-101%); }
+    .loader-num {
+      font-family: var(--f-serif);
+      font-weight: 300; font-size: clamp(96px, 16vw, 190px);
+      color: #d4d1c7; line-height: 1; letter-spacing: -.02em;
+      font-style: italic;
+      transition: font-size .35s ease;
+    }
+    .loader-num.style-b { font-family: var(--f-cond); font-weight: 200; font-style: normal; letter-spacing: .02em; }
+    .loader-num.style-c { font-family: var(--f-display); font-style: normal; letter-spacing: .06em; }
+    .loader-num sup { font-size: .42em; vertical-align: super; margin-left: .06em; }
+    .loader-tag {
+      position: absolute; bottom: 42px; left: 50%; transform: translateX(-50%);
+      font-family: var(--f-mono); font-size: 11px;
+      letter-spacing: .32em; text-transform: uppercase; color: #b3afa3;
+      white-space: nowrap;
+    }
+
+    /* ============================= HEADER ============================= */
+    header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 40;
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: start;
+      padding: 26px 44px 0;
+      pointer-events: none;
+      transition: opacity .5s ease;
+    }
+    header.hide { opacity: 0; pointer-events: none !important; }
+    header > * { pointer-events: auto; }
+    .hlink {
+      font-family: var(--f-mono); font-size: 12px;
+      letter-spacing: .22em; text-transform: uppercase; color: var(--ink);
+      text-decoration: none; background: none; border: 0; cursor: pointer;
+      padding: 6px 0; position: relative;
+    }
+    .hlink::after {
+      content: ""; position: absolute; left: 0; bottom: 0; height: 1px; width: 100%;
+      background: var(--ink); transform: scaleX(0); transform-origin: right;
+      transition: transform .45s cubic-bezier(.6, 0, .2, 1);
+    }
+    .hlink:hover::after { transform: scaleX(1); transform-origin: left; }
+    .h-right { text-align: right; }
+    .brand { text-align: center; color: var(--ink); }
+    .brand b {
+      display: block; font-family: var(--f-display); font-weight: 400;
+      font-size: 30px; letter-spacing: .3em; margin-right: -.3em; text-transform: uppercase;
+    }
+    .brand small {
+      display: block; margin-top: 6px;
+      font-family: var(--f-mono); font-size: 10.5px;
+      letter-spacing: .3em; margin-right: -.3em; text-transform: uppercase; color: var(--ink-soft);
+    }
+    .brand i { display: block; margin-top: 8px; font-style: normal; font-size: 11px; color: #a39f92; }
+
+    /* ============================= SCROLL SCENE ============================= */
+    #track { position: relative; height: 600vh; }
+    .sticky-viewport {
+      position: sticky; top: 0;
+      height: 100vh; height: 100dvh;
+      width: 100%;
+      display: flex; align-items: center; justify-content: center;
+      perspective: 1400px; perspective-origin: 50% 45%;
+      overflow: hidden;
+    }
+
+    /* ---- faint orbital arcs (video decor) ---- */
+    .arc {
+      position: absolute; left: 50%; top: 50%; z-index: 0;
+      border: 1px solid rgba(40, 38, 30, .12); border-radius: 50%;
+      will-change: transform;
+      pointer-events: none;
+    }
+    .arc.a1 { width: 130vw; height: 130vw; transform: translate(-50%, -50%) rotate(-12deg); }
+    .arc.a2 { width: 96vw; height: 96vw; transform: translate(-50%, -50%) rotate(9deg); border-color: rgba(40, 38, 30, .09); }
+
+    /* ---- giant name wall (stays BEHIND the cards) ---- */
+    .name-wall { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+    .name-row {
+      position: absolute; left: 0;
+      width: max-content;
+      white-space: nowrap;
+      font-family: var(--f-grotesk); font-weight: 600;
+      font-size: clamp(88px, 15vw, 240px);
+      line-height: .94; letter-spacing: -.015em;
+      text-transform: uppercase;
+      color: #43443c;
+      will-change: transform;
+    }
+    #rowA { top: 17%; }
+    #rowB { top: 57%; }
+    .scene-caption {
+      position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(560px, 80vw); text-align: center;
+      font-family: var(--f-grotesk); font-weight: 500;
+      font-size: clamp(12px, 1.05vw, 15px);
+      letter-spacing: .14em; text-transform: uppercase;
+      line-height: 1.75; color: #55564c;
+    }
+    .scene-caption .star { display: block; font-size: 15px; margin-bottom: 12px; color: #8b887b; letter-spacing: 0; }
+    .plus-mark {
+      position: absolute; z-index: 1;
+      font-family: var(--f-grotesk); font-weight: 400;
+      font-size: 20px; color: #8f8c80;
+      transform: translate(-50%, -50%);
+    }
+
+    /* ---- the rule that draws behind the settled grid ---- */
+    .grid-rule {
+      position: absolute; left: 0; right: 0; top: 50%; z-index: 1;
+      height: 1px; background: rgba(40, 38, 30, .28);
+      transform: scaleX(0); opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ---- cards grid (ON TOP of the name, spiral in) ---- */
+    .cards-grid {
+      position: relative; z-index: 2;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(14px, 1.7vw, 26px);
+      width: min(88vw, 1120px);
+      transform-style: preserve-3d;
+    }
+    .doctor-card {
+      background: #fffdf8; color: #2b2c26;
+      border-radius: 14px;
+      padding: clamp(16px, 1.8vw, 28px);
+      height: clamp(200px, 33vh, 330px);
+      display: flex; flex-direction: column; justify-content: space-between;
+      box-shadow: 0 18px 42px rgba(30, 28, 20, .12);
+      will-change: transform, opacity;
+      transform-origin: center center;
+      backface-visibility: hidden;
+      cursor: pointer;
+      transition: box-shadow .4s ease;
+    }
+    .doctor-card:hover { box-shadow: 0 30px 64px rgba(30, 28, 20, .22); }
+    .doctor-card:focus-visible { outline: 2px solid var(--maroon); outline-offset: 3px; }
+
+    .doctor-card.tint-dark { background: #26241f; color: #f0eee6; }
+    .doctor-card.tint-beige { background: #d9cec0; color: #33312a; }
+    .doctor-card.tint-cream { background: #f1ead6; color: #4a4331; }
+    .doctor-card.tint-blue { background: #dbe4ec; color: #2c4258; }
+    .doctor-card.tint-pink { background: #e3b9c9; color: #4a2434; }
+
+    .doctor-card .category {
+      font-family: var(--f-mono);
+      font-size: clamp(9px, .72vw, 11px);
+      letter-spacing: .2em; text-transform: uppercase;
+      opacity: .62;
+    }
+    .doctor-card .title {
+      font-family: var(--f-grotesk); font-weight: 600;
+      font-size: clamp(19px, 1.85vw, 30px);
+      line-height: 1.12; letter-spacing: -.01em;
+      margin-top: 10px;
+    }
+    .doctor-card .description {
+      font-family: var(--f-grotesk); font-weight: 400;
+      font-size: clamp(11.5px, .85vw, 13.5px);
+      line-height: 1.5; opacity: .78; margin-top: 9px;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .doctor-card .card-foot {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: auto; padding-top: 14px;
+      font-family: var(--f-mono);
+      font-size: clamp(9px, .72vw, 11px);
+      letter-spacing: .12em; text-transform: uppercase;
+      border-top: 1px solid currentColor; border-image: linear-gradient(to right, currentColor, currentColor) 1;
+      border-bottom: 0; border-left: 0; border-right: 0;
+      opacity: .85;
+    }
+    .doctor-card .card-foot .no { opacity: .6; }
+
+    /* ---- scene footer corners ---- */
+    .scene-foot {
+      position: absolute; bottom: 34px; z-index: 3;
+      font-family: var(--f-grotesk); font-weight: 400;
+      font-size: 12.5px; line-height: 1.6; color: #6b6c60;
+      opacity: 0; max-width: 300px;
+    }
+    .scene-foot.left { left: 44px; bottom: 88px; }
+    .scene-foot.right { right: 44px; text-align: right; }
+    .scene-foot a {
+      color: var(--ink); text-decoration: none; cursor: pointer;
+      font-family: var(--f-mono); font-size: 11px; letter-spacing: .2em; text-transform: uppercase;
+      border-bottom: 1px solid var(--ink); padding-bottom: 5px;
+    }
+    .scene-hint {
+      position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 3;
+      font-family: var(--f-mono); font-size: 10px;
+      letter-spacing: .3em; text-transform: uppercase; color: #97948a;
+      opacity: 0; white-space: nowrap;
+    }
+
+    /* ============================= AFTER-SCENE ============================= */
+    .after { position: relative; background: var(--bg); padding: 18vh 6vw 16vh; }
+    .after .eyebrow {
+      display: flex; align-items: center; gap: 18px;
+      font-family: var(--f-mono); font-size: 11px;
+      letter-spacing: .34em; text-transform: uppercase; color: #a09d90;
+      margin-bottom: 7vh;
+    }
+    .after .eyebrow::before, .after .eyebrow::after { content: ""; height: 1px; background: var(--hairline); flex: 1; }
+    .big-quote {
+      font-family: var(--f-serif); font-style: italic; font-weight: 400;
+      font-size: clamp(26px, 3.4vw, 46px); line-height: 1.42;
+      max-width: 26ch; margin: 0 auto; text-align: center; color: #3b3c34;
+    }
+    .big-quote .qm { font-family: var(--f-display); font-style: normal; color: var(--maroon); opacity: .85; }
+    .quote-by {
+      margin-top: 4vh; text-align: center;
+      font-family: var(--f-mono); font-size: 11px;
+      letter-spacing: .3em; text-transform: uppercase; color: #a09d90;
+    }
+    .stats {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0 26px; max-width: 1080px; margin: 12vh auto 0;
+    }
+    .stat { border-top: 1px solid rgba(51,53,47,.3); padding: 24px 4px 0; }
+    .stat b {
+      display: block; font-family: var(--f-display); font-weight: 400;
+      font-size: clamp(38px, 4.4vw, 60px); line-height: 1; letter-spacing: .02em;
+    }
+    .stat small {
+      display: block; margin-top: 12px;
+      font-family: var(--f-mono); font-size: 10px;
+      letter-spacing: .24em; text-transform: uppercase; color: var(--ink-soft); line-height: 1.9;
+    }
+
+    /* ============================= DARK OUTRO ============================= */
+    .outro { position: relative; background: #161512; color: #e7e4d9; padding: 15vh 6vw 5vh; overflow: hidden; }
+    .outro .eyebrow-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-family: var(--f-mono); font-size: 11px;
+      letter-spacing: .26em; text-transform: uppercase; color: #8e8b7e;
+      margin-bottom: 6vh;
+    }
+    .outro h2 {
+      font-family: var(--f-grotesk); font-weight: 600;
+      font-size: clamp(42px, 6.4vw, 104px);
+      line-height: 1.04; letter-spacing: -.02em;
+      max-width: 17ch;
+    }
+    .outro h2 .soft { color: #6d6b60; }
+    .outro-links {
+      display: flex; flex-wrap: wrap; gap: 34px 60px;
+      margin-top: 8vh; justify-content: flex-end;
+    }
+    .outro-links a {
+      font-family: var(--f-mono); font-size: 12px;
+      letter-spacing: .22em; text-transform: uppercase;
+      color: #e7e4d9; text-decoration: none;
+      border-bottom: 1px solid #e7e4d9; padding-bottom: 9px;
+      display: inline-flex; gap: 12px; align-items: center;
+      transition: color .3s ease, border-color .3s ease;
+    }
+    .outro-links a:hover { color: #b8b4a4; border-color: #b8b4a4; }
+    .outro-foot {
+      display: flex; flex-wrap: wrap; gap: 14px 40px; justify-content: space-between;
+      border-top: 1px solid rgba(231, 228, 217, .16);
+      margin-top: 10vh; padding: 26px 0 10px;
+      font-family: var(--f-mono); font-size: 10.5px;
+      letter-spacing: .18em; text-transform: uppercase; color: #8e8b7e;
+    }
+    .outro-foot a { color: #b8b4a4; text-decoration: none; }
+    .outro-foot a:hover { color: #e7e4d9; }
+
+    /* ============================= SOUND ============================= */
+    #sound {
+      position: fixed; left: 24px; top: 86px; z-index: 45;
+      display: inline-flex; align-items: center; gap: 10px;
+      background: rgba(246, 244, 239, .82); border: 1px solid var(--hairline);
+      border-radius: 999px; padding: 11px 18px; cursor: pointer;
+      backdrop-filter: blur(8px);
+      font-family: var(--f-mono); font-size: 10px;
+      letter-spacing: .26em; text-transform: uppercase; color: var(--ink-soft);
+      transition: color .3s ease;
+    }
+    #sound:hover { color: var(--ink); }
+    #sound svg { width: 18px; height: 14px; }
+
+    /* ============================= CHAPTER OVERLAY ============================= */
+    .chapter {
+      position: fixed; inset: 0; z-index: 60; overflow-y: auto; overflow-x: hidden;
+      background: var(--cream);
+      opacity: 0; pointer-events: none; visibility: hidden; transition: opacity .55s ease, visibility 0s .55s;
+    }
+    .chapter.open { opacity: 1; pointer-events: auto; visibility: visible; transition: opacity .55s ease; }
+    .ch-inner { transform: translateY(60px); opacity: 0; transition: transform .8s cubic-bezier(.22,1,.3,1), opacity .7s ease; }
+    .chapter.open .ch-inner { transform: translateY(0); opacity: 1; }
+
+    .ch-back {
+      position: fixed; top: 24px; left: 44px; z-index: 70;
+      display: inline-flex; align-items: center; gap: 12px;
+      font-family: var(--f-mono); font-size: 11px;
+      letter-spacing: .22em; text-transform: uppercase;
+      color: var(--ink); text-decoration: none; cursor: pointer;
+      background: rgba(246, 244, 239, .72); border: 1px solid var(--hairline);
+      border-radius: 999px; padding: 12px 22px; backdrop-filter: blur(8px);
+      transition: background .3s ease;
+    }
+    .ch-back:hover { background: #fff; }
+    .ch-back .arr { transition: transform .3s ease; }
+    .ch-back:hover .arr { transform: translateX(-5px); }
+
+    .ch-hero { padding: 17vh 6vw 11vh; text-align: center; color: var(--tint-ink, var(--ink)); }
+    .ch-hero .mast {
+      font-family: var(--f-mono); font-size: 11px;
+      letter-spacing: .34em; text-transform: uppercase; opacity: .66;
+    }
+    .ch-hero h1 .t1 {
+      display: block; font-family: var(--f-display); font-weight: 400;
+      font-size: clamp(52px, 10vw, 132px); line-height: 1.04;
+      letter-spacing: .1em; margin-right: -.1em; text-transform: uppercase;
+      margin-top: 26px;
+    }
+    .ch-hero h1 .t2 {
+      display: block; font-family: var(--f-serif); font-style: italic; font-weight: 300;
+      font-size: clamp(34px, 6vw, 78px); line-height: 1.1; margin-top: 6px;
+    }
+    .ch-hero .star { margin-top: 22px; font-size: 15px; opacity: .6; font-style: normal; }
+    .ch-hero .doc {
+      margin-top: 14px; font-family: var(--f-mono); font-size: 11px;
+      letter-spacing: .28em; text-transform: uppercase; opacity: .6;
+    }
+
+    .ch-band { position: relative; height: 74vh; min-height: 420px; }
+    .ch-band .art {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center;
+      clip-path: inset(6% 4% 6% 4% round 4px);
+      transition: clip-path 1.1s cubic-bezier(.22,1,.3,1);
+    }
+    .chapter.open .ch-band .art { clip-path: inset(0 0 0 0 round 0); }
+    .chip {
+      position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 16px;
+      background: #fffefb; border: 1px solid var(--hairline); border-radius: 18px;
+      padding: 14px 22px 14px 14px; box-shadow: 0 24px 60px rgba(40,38,30,.18);
+      text-decoration: none; color: var(--ink); max-width: min(92vw, 460px);
+      transition: transform .35s cubic-bezier(.3,1.4,.4,1), box-shadow .35s ease;
+    }
+    .chip:hover { transform: translateX(-50%) translateY(-4px); box-shadow: 0 30px 70px rgba(40,38,30,.24); }
+    .chip .thumb { width: 52px; height: 52px; border-radius: 12px; flex: none; background-size: cover; background-position: center; }
+    .chip b { display: block; font-family: var(--f-body); font-weight: 400; font-size: 19px; letter-spacing: .02em; }
+    .chip small { display: block; margin-top: 3px; font-family: var(--f-cond); font-weight: 300; font-size: 12px; letter-spacing: .06em; color: var(--ink-soft); }
+    .chip .go { margin-left: 6px; font-size: 18px; color: var(--maroon); }
+
+    .ch-body { max-width: 1140px; margin: 0 auto; padding: 10vh 6vw 6vh; }
+    .lede {
+      font-family: var(--f-serif); font-weight: 400;
+      font-size: clamp(21px, 2.4vw, 29px); line-height: 1.75;
+      text-align: center; max-width: 62ch; margin: 0 auto 11vh; color: #43443c;
+    }
+    .lede::first-letter { font-size: 1.6em; font-family: var(--f-display); }
+    .sec-eyebrow {
+      font-family: var(--f-mono); font-size: 11px;
+      letter-spacing: .34em; text-transform: uppercase; color: #a39f92;
+      display: flex; align-items: center; gap: 18px; margin-bottom: 44px;
+    }
+    .sec-eyebrow::before, .sec-eyebrow::after { content: ""; height: 1px; background: var(--hairline); flex: 1; }
+    .stats2 { display: grid; grid-template-columns: repeat(4, 1fr); margin-bottom: 11vh; }
+    .stat2 { border-top: 1px solid var(--hairline); padding: 26px 18px 8px 0; }
+    .stat2 b { display: block; font-family: var(--f-display); font-weight: 400; font-size: clamp(38px, 4.4vw, 58px); line-height: 1; letter-spacing: .02em; }
+    .stat2 small { display: block; margin-top: 12px; font-family: var(--f-cond); font-weight: 300; font-size: 11px; letter-spacing: .26em; text-transform: uppercase; color: var(--ink-soft); line-height: 1.8; }
+    .timeline { margin-bottom: 11vh; }
+    .t-row { display: grid; grid-template-columns: 130px 1fr; gap: 30px; padding: 30px 0; border-top: 1px solid var(--hairline); }
+    .t-row:last-child { border-bottom: 1px solid var(--hairline); }
+    .t-row .y { font-family: var(--f-mono); font-size: 13px; letter-spacing: .14em; color: var(--maroon); padding-top: 5px; }
+    .t-row h3 { font-family: var(--f-body); font-weight: 400; font-size: 21px; letter-spacing: .02em; }
+    .t-row p { margin-top: 8px; font-family: var(--f-serif); font-size: 18px; line-height: 1.65; color: var(--ink-soft); max-width: 60ch; }
+    .notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-bottom: 11vh; }
+    .note { background: #fffefb; border: 1px solid var(--hairline); border-radius: 4px; padding: 28px 26px 30px; transition: transform .35s ease, box-shadow .35s ease; }
+    .note:hover { transform: translateY(-5px); box-shadow: 0 22px 50px rgba(40,38,30,.10); }
+    .note .k { font-family: var(--f-mono); font-size: 10px; letter-spacing: .26em; text-transform: uppercase; color: var(--maroon); margin-bottom: 14px; }
+    .note p { font-family: var(--f-serif); font-size: 17.5px; line-height: 1.6; color: #4c4d44; }
+    .quote { text-align: center; margin-bottom: 12vh; }
+    .quote .mark { font-family: var(--f-display); font-size: 90px; line-height: .4; color: var(--maroon); opacity: .8; display: block; margin-bottom: 30px; }
+    .quote p { font-family: var(--f-serif); font-style: italic; font-weight: 400; font-size: clamp(24px, 3vw, 36px); line-height: 1.5; max-width: 30ch; margin: 0 auto; color: #3d3e36; }
+    .quote small { display: block; margin-top: 26px; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .3em; text-transform: uppercase; color: #a39f92; }
+    .ch-end { text-align: center; padding: 0 6vw 14vh; }
+    .ch-end a {
+      display: inline-block; font-family: var(--f-mono); font-size: 11px;
+      letter-spacing: .26em; text-transform: uppercase;
+      color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink);
+      padding-bottom: 8px; cursor: pointer;
+    }
+
+    .rv { opacity: 0; transform: translateY(34px); transition: opacity .9s ease, transform .9s cubic-bezier(.22,1,.3,1); }
+    .rv.in { opacity: 1; transform: none; }
+
+    /* ============================= ABOUT ============================= */
+    #about {
+      position: fixed; inset: 0; z-index: 80; display: grid; place-items: center;
+      background: rgba(51, 50, 43, .45); backdrop-filter: blur(10px);
+      opacity: 0; pointer-events: none; transition: opacity .45s ease;
+    }
+    #about.open { opacity: 1; pointer-events: auto; }
+    .about-card {
+      width: min(620px, 90vw); background: var(--cream); border-radius: 6px;
+      padding: 56px 54px 48px; text-align: center; position: relative;
+      transform: translateY(26px); transition: transform .5s cubic-bezier(.22,1,.3,1);
+      box-shadow: 0 40px 120px rgba(20,20,15,.35);
+    }
+    #about.open .about-card { transform: none; }
+    .about-card .mast { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .34em; text-transform: uppercase; color: #a39f92; }
+    .about-card h2 { font-family: var(--f-display); font-weight: 400; font-size: 42px; letter-spacing: .08em; text-transform: uppercase; margin: 18px 0 8px; }
+    .about-card .doc { font-family: var(--f-serif); font-style: italic; font-size: 21px; color: var(--maroon); margin-bottom: 22px; }
+    .about-card p { font-family: var(--f-serif); font-size: 18px; line-height: 1.75; color: var(--ink-soft); text-align: left; }
+    .about-card p + p { margin-top: 14px; }
+    .about-card .close {
+      margin-top: 30px; display: inline-block; background: none; border: 0; cursor: pointer;
+      font-family: var(--f-mono); font-size: 11px; letter-spacing: .26em;
+      text-transform: uppercase; color: var(--ink); border-bottom: 1px solid var(--ink); padding-bottom: 6px;
+    }
+    .about-card .credit { margin-top: 26px; font-family: var(--f-mono); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: #b1aca0; }
+
+    /* ============================= RESPONSIVE ============================= */
+    @media (max-width: 1100px) {
+      .cards-grid { grid-template-columns: repeat(3, 1fr); width: 92vw; }
+      header { padding: 22px 24px 0; }
+      .scene-foot.left { left: 24px; }
+      .scene-foot.right { right: 24px; }
+      .ch-back { left: 24px; top: 20px; }
+    }
+    @media (max-width: 760px) {
+      .cards-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .doctor-card { height: clamp(150px, 21vh, 230px); border-radius: 12px; }
+      .doctor-card .description { display: none; }
+      .doctor-card .title { font-size: clamp(15px, 4.4vw, 22px); }
+      .doctor-card .card-foot { padding-top: 10px; }
+      .name-row { font-size: clamp(64px, 19vw, 120px); }
+      #rowA { top: 20%; }
+      #rowB { top: 54%; }
+      .scene-foot.left { display: none; }
+      .scene-foot.right { right: 20px; bottom: 26px; }
+      .stats { grid-template-columns: repeat(2, 1fr); gap: 34px 20px; }
+      .stats2 { grid-template-columns: repeat(2, 1fr); }
+      .notes { grid-template-columns: 1fr; }
+      .t-row { grid-template-columns: 74px 1fr; gap: 16px; }
+      .ch-band { height: 56vh; }
+      .outro-links { justify-content: flex-start; }
+      #sound { left: 16px; top: 78px; bottom: auto; padding: 9px 14px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ======================= PRELOADER ======================= -->
+  <div id="loader">
+    <div class="loader-num" id="loaderNum"><span id="loaderVal">0</span><sup>%</sup></div>
+    <p class="loader-tag">ARIA MEDICAL · CHAPTER THE DOCTOR</p>
+  </div>
+  <noscript><style>#loader{display:none}</style></noscript>
+
+  <!-- ======================= HEADER ======================= -->
+  <header id="siteHeader">
+    <button class="hlink" id="aboutBtn" type="button">About</button>
+    <div class="brand">
+      <b>ARIA AI</b>
+      <small>Chapter The Doctor</small>
+      <i>✦</i>
+    </div>
+    <div class="h-right">
+      <a class="hlink" href="/">Directory <span style="letter-spacing:0">↗</span></a>
+    </div>
+  </header>
+
+  <!-- ======================= SCROLL SCENE ======================= -->
+  <div id="track">
+    <div class="sticky-viewport" id="scene">
+
+      <div class="arc a1" id="arc1"></div>
+      <div class="arc a2" id="arc2"></div>
+
+      <!-- giant name wall — stays BEHIND the spiral of cards -->
+      <div class="name-wall" id="nameWall">
+        <div class="name-row" id="rowA"></div>
+        <div class="name-row" id="rowB"></div>
+        <p class="scene-caption" id="sceneCaption">
+          <span class="star">✦</span>
+          Exploring healing through<br />daily clinical practice.
+        </p>
+        <span class="plus-mark" style="left:22%; top:30%">+</span>
+        <span class="plus-mark" style="left:80%; top:66%">+</span>
+        <span class="plus-mark" style="left:57%; top:20%">+</span>
+      </div>
+
+      <div class="grid-rule" id="gridRule"></div>
+
+      <!-- spiral cards — arrive ON TOP of the name -->
+      <div class="cards-grid" id="cardsGrid"></div>
+
+      <div class="scene-foot left" id="sceneFootL">
+        Six chapters from the ward — the craft, the code and the questions, kept openly on the record.
+      </div>
+      <div class="scene-foot right" id="sceneFootR">
+        <a id="toRecord">The doctor's record ↓</a>
+      </div>
+      <p class="scene-hint" id="sceneHint">Tap a card — open its chapter</p>
+
+    </div>
+  </div>
+
+  <!-- ======================= AFTER-SCENE ======================= -->
+  <section class="after" id="record">
+    <p class="eyebrow">In his own words</p>
+    <p class="big-quote"><span class="qm">“</span>A heart does not read the chart. You listen until the rhythm tells you what the paper forgot.<span class="qm">”</span></p>
+    <p class="quote-by">— Dr. Arjun Mehta · ward rounds, 2019</p>
+    <div class="stats">
+      <div class="stat"><b>22</b><small>years at<br />the table</small></div>
+      <div class="stat"><b>12,400</b><small>procedures<br />led</small></div>
+      <div class="stat"><b>47</b><small>peer<br />publications</small></div>
+      <div class="stat"><b>11</b><small>awards &amp;<br />honours</small></div>
+    </div>
+  </section>
+
+  <!-- ======================= DARK OUTRO ======================= -->
+  <footer class="outro">
+    <div class="eyebrow-row">
+      <span>Let's keep the rhythm together.</span>
+      <span id="istClock">IST → --:--</span>
+    </div>
+    <h2>Ready to meet the hands <span class="soft">behind the care?</span></h2>
+    <div class="outro-links">
+      <a href="/">Back to the directory <span>→</span></a>
+      <a href="/hospital.html">Enter the hospital module <span>→</span></a>
+      <a href="#" id="replayTop">Replay the scroll <span>↑</span></a>
+    </div>
+    <div class="outro-foot">
+      <span>© ARIA · Chapter the Doctor</span>
+      <span>E. care@aria.health</span>
+      <span>Made by Aria Studio</span>
+      <span>Motion homage · TRIONN “Design in Motion”</span>
+    </div>
+  </footer>
+
+  <!-- ======================= SOUND ======================= -->
+  <button id="sound" type="button" aria-pressed="false">
+    <span id="soundState">Sound off</span>
+    <svg viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 6.5h3.5L10 2.5v13L5.5 11.5H2z" fill="currentColor" stroke="none" />
+      <g id="soundWaves" style="display:none">
+        <path d="M13.5 6.5c1.2 1.4 1.2 3.6 0 5" />
+        <path d="M16.5 4.5c2.2 2.4 2.2 6.6 0 9" />
+      </g>
+      <g id="soundMute">
+        <path d="M14 6.5l5 5M19 6.5l-5 5" />
+      </g>
+    </svg>
+  </button>
+
+  <!-- ======================= CHAPTER OVERLAY ======================= -->
+  <div class="chapter" id="chapter" aria-hidden="true" data-lenis-prevent>
+    <button class="ch-back" id="chBack" type="button"><span class="arr">←</span> Back to the scene</button>
+    <div class="ch-inner" id="chInner"></div>
+  </div>
+
+  <!-- ======================= ABOUT ======================= -->
+  <div id="about" aria-hidden="true">
+    <div class="about-card">
+      <p class="mast">Aria Medical · Station 04</p>
+      <h2>The Doctors<br />Module</h2>
+      <p class="doc">Dr. Arjun Mehta — Chief Clinical Officer</p>
+      <p>Scroll the chapter and the doctor's name arrives the way his rounds do — in motion, from both sides of the ward at once, crossing at the centre. Then the six dimensions of his practice sweep through as one connected ribbon — rising from below, passing in front of the name, curling away — before each one pops into place: the experience at the table, the quiet code of professionalism, the research, the teaching, the specialties, and the honours.</p>
+      <p>Tap any card to open its full story — timelines, field notes and the numbers behind them — every chapter wired back into ARIA's risk engine.</p>
+      <button class="close" id="aboutClose" type="button">Return to the scene</button>
+      <p class="credit">Motion homage · “Design in Motion” by TRIONN</p>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
+
+  <script>
+  (function () {
+    "use strict";
+
+    /* ================================================================
+       THE SIX CHAPTERS — full stories (opened by tapping a card)
+    ================================================================ */
+    const CHAPTERS = [
+      {
+        id: "experience", no: "01",
+        t1: "The Experience", t2: "of the healing craft",
+        tint: "#dfe5e0", tintInk: "#2c3a33",
+        lines: "Twenty-two years of listening — twelve thousand hearts handed back their rhythm.",
+        cover: "media/doctors/card-experience.jpg", hero: "media/doctors/hero-experience.jpg",
+        chip: { title: "The Cath Lab Ledger", m1: "412 interventions this year", m2: "door-to-balloon: 38 minutes" },
+        lede: "Experience, in Dr. Mehta's hands, is not a number pinned to a wall. It is twenty-two years of learning which silences in a ward matter, which fevers lie, and when to trust the family's instinct over the chart. It began on a monsoon night in Chandigarh and now spans two continents, forty-one cath labs and a decade of teaching the next pair of hands.",
+        stats: [
+          { n: "22", l: "years at the table" },
+          { n: "12,400", l: "procedures led" },
+          { n: "31", l: "countries taught in" },
+          { n: "98.2%", l: "follow-up adherence" },
+        ],
+        timeline: [
+          { y: "2003", t: "Resident, Internal Medicine — PGIMER, Chandigarh", d: "First night on call: three admissions, one coding patient and a borrowed stethoscope. The rhythm stuck." },
+          { y: "2007", t: "Senior Resident, Cardiology — AIIMS, New Delhi", d: "Two thousand echo studies a year. Learned that the fastest diagnosis in the ward is a careful question." },
+          { y: "2011", t: "Interventional Fellowship — Hôpital Européen, Paris", d: "Structural heart under the pioneers of the TAVR era; brought the technique home in a suitcase of papers." },
+          { y: "2014", t: "Lead Cardiologist — Apex Heart Institute", d: "Built the state's first 24/7 primary-PCI rota. Door-to-balloon fell from 91 to 41 minutes in two years." },
+          { y: "2019", t: "Head of Cardiology — Metro Heart Institute", d: "Eleven cath labs, four hundred staff, one rule: the junior speaks first on every round." },
+          { y: "2024", t: "Chief Clinical Officer — ARIA AI", d: "Carried the ward into the algorithm. Now the follow-up call happens before the readmission does." },
+        ],
+        notes: [
+          { k: "The Volume", v: "Over 412 interventions led this year alone — 96.4% primary success, documented, audited, published." },
+          { k: "The Nights", v: "Fifteen years of night duty without a missed phone call. The ward phone number still rings on his desk." },
+          { k: "The Borders", v: "Guest faculty in 31 countries, from Stockholm to Singapore, teaching exactly what the wards taught him." },
+          { k: "The Habit", v: "Every Monday morning, first hour: he walks the ward he no longer has to. The consultants follow anyway." },
+          { k: "The Crisis File", v: "Led the cardiac response during three regional emergencies; zero days the cath lab stayed shut." },
+          { k: "The Ledger", v: "Keeps a paper ledger of every death under his care. 'Numbers that forget their faces become statistics.'" },
+        ],
+        quote: "A heart does not read the chart. You listen until the rhythm tells you what the paper forgot.",
+        quoteBy: "Dr. Arjun Mehta · ward rounds, 2019",
+      },
+      {
+        id: "professionalism", no: "02",
+        t1: "Professionalism", t2: "& the quiet code",
+        tint: "#dcd8ea", tintInk: "#413c62",
+        lines: "The quiet discipline behind every decision — a code older than the white coat.",
+        cover: "media/doctors/card-professionalism.jpg", hero: "media/doctors/hero-professionalism.jpg",
+        chip: { title: "The Patient Charter", m1: "every plan explained in plain words", m2: "0 pending ethics flags" },
+        lede: "Professionalism is the part of medicine no exam can grade. It is the consent taken in the patient's own language, the phone call to the family before the family calls you, the refusal to order a test that answers nothing. Colleagues describe his ward as quiet — not because nothing happens, but because nothing is left unsaid.",
+        stats: [
+          { n: "3", l: "board fellowships" },
+          { n: "100%", l: "audit clear · 9 yrs" },
+          { n: "6", l: "languages at the bedside" },
+          { n: "0", l: "pending ethics flags" },
+        ],
+        timeline: [
+          { y: "2009", t: "DM Cardiology — national board certified", d: "Thesis on post-MI adherence read like a manifesto: the system must follow the patient home." },
+          { y: "2013", t: "FACC — Fellow of the American College of Cardiology", d: "Elected for contributions to equitable interventional access." },
+          { y: "2016", t: "FESC — European Society of Cardiology", d: "The year he wrote his now-famous three-line consent: what, why, what if we do nothing." },
+          { y: "2018", t: "Hospital Ethics Committee — chair", d: "Rewrote the end-of-life counselling template; family complaints fell by two-thirds." },
+          { y: "2021", t: "Medical Council examiner", d: "Grades the profession's entrance; known for failing shortcuts kindly, and firmly." },
+          { y: "2024", t: "The ARIA charter", d: "Every automated reminder the platform sends is signed the way he signs a chart — no jargon, no fear." },
+        ],
+        notes: [
+          { k: "The Consent", v: "Three lines, six languages, one rule: if the family cannot repeat the plan back, the plan is not explained yet." },
+          { k: "The Test Rule", v: "No investigation without a decision it will change. The house-staff's order sets are proofread like poetry." },
+          { k: "The Phone", v: "His personal number is on the discharge summary. It has never been switched off since 2014." },
+          { k: "The Audit", v: "Nine consecutive years of clean prescription audits — the hospital pharmacist keeps the streak framed." },
+          { k: "The Refusal", v: "Turned down a lucrative device consultancy: 'My signature cannot be for sale where I operate.'" },
+          { k: "The Handover", v: "Wrote the ward's SBAR handover poem — nurses still recite it when the monitors are screaming." },
+        ],
+        quote: "Professionalism is what you do when no senior is watching — and what the patient feels when no one is.",
+        quoteBy: "white-coat ceremony address, 2022",
+      },
+      {
+        id: "research", no: "03",
+        t1: "Research", t2: "& trials",
+        tint: "#f2d7e0", tintInk: "#5e2438",
+        lines: "A question asked every morning — evidence kept like a promise.",
+        cover: "media/doctors/card-research.jpg", hero: "media/doctors/hero-research.jpg",
+        chip: { title: "ARIA-READMIT Cohort", m1: "n = 4,800 · 14 centres", m2: "readmissions down 27%" },
+        lede: "The research was never separate from the ward; it was the ward, written down. Forty-seven papers grew from questions the charts kept asking — why do adherent patients return, what does a missed call cost in days, can a machine notice the silence before a relapse. The latest question became ARIA itself.",
+        stats: [
+          { n: "47", l: "peer publications" },
+          { n: "12", l: "clinical trials led" },
+          { n: "3,900", l: "citations" },
+          { n: "27%", l: "readmission cut · cohort" },
+        ],
+        timeline: [
+          { y: "2012", t: "First paper — post-MI adherence in North India", d: "India Heart Journal. The finding: prescriptions were followed only when someone asked about them weekly." },
+          { y: "2016", t: "PI — ARIA-READMIT pilot", d: "n = 1,200, single centre. Weekly structured calls cut 30-day readmissions by a fifth. The seed of a platform." },
+          { y: "2019", t: "Co-author — regional Lancet commission", d: "On task-shifting post-discharge care to community health workers with automated escalation." },
+          { y: "2022", t: "Grant — AI-assisted discharge risk scoring", d: "Department of Biotechnology. Built the first version of the risk engine that now runs ARIA." },
+          { y: "2025", t: "Validation — risk engine v3", d: "Multicentre, prospective. Sensitivity for 30-day readmission: 0.84. The machine learned to listen." },
+        ],
+        notes: [
+          { k: "The Cohort", v: "ARIA-READMIT now follows 4,800 patients across 14 centres — the largest post-discharge cohort in the region." },
+          { k: "The Question", v: "Every study he runs must answer a question a nurse first asked him. 'Good questions come from the bedside, not the boardroom.'" },
+          { k: "The Method", v: "Insists on pre-registration and null results in print. Three of his forty-seven papers are honest nulls." },
+          { k: "The Lab", v: "Runs a two-room research unit above the cath lab — one room for data, one for the coffee that funds it." },
+          { k: "The Patent", v: "Two granted patents in medication-adherence signalling; both licensed royalty-free to public hospitals." },
+          { k: "The Reviewer", v: "Peer reviewer for three journals. Returns reviews in 72 hours with the margin notes he wishes he received." },
+        ],
+        quote: "Every chart in the ward is an unfinished paper. Research is just the ward refusing to forget.",
+        quoteBy: "inaugural oration, 2021",
+      },
+      {
+        id: "education", no: "04",
+        t1: "The Education", t2: "of a healer",
+        tint: "#f3edda", tintInk: "#57503b",
+        lines: "From the first white coat to the teaching rounds of sixty fellows.",
+        cover: "media/doctors/card-education.jpg", hero: "media/doctors/hero-education.jpg",
+        chip: { title: "Mehta Rounds", m1: "every Saturday · open to all", m2: "nurses & students welcome" },
+        lede: "The education never really ended; it changed direction. Gold medal at twenty-two, a doctorate by thirty, professor before forty — and then the discovery that the best classroom is a crowded ward at seven in the morning. Sixty fellows have trained under him; nine countries now hold his former students.",
+        stats: [
+          { n: "60+", l: "fellows trained" },
+          { n: "9", l: "countries they serve in" },
+          { n: "200+", l: "guest lectures" },
+          { n: "6", l: "textbook chapters" },
+        ],
+        timeline: [
+          { y: "1995", t: "MBBS — AIIMS, New Delhi", d: "Entered on a district merit scholarship; the first doctor his village had produced in living memory." },
+          { y: "1999", t: "The gold medal", d: "Best outgoing student in medicine. The medal hangs, deliberately, above the ward noticeboard." },
+          { y: "2005", t: "MD Internal Medicine — PGIMER", d: "Trained under the legendary ward rounds where questions outnumbered answers four to one." },
+          { y: "2009", t: "DM Cardiology — AIIMS", d: "Senior residency doubled as apprenticeship in teaching; wrote the first version of his rounds workbook." },
+          { y: "2018", t: "Professor — cardiology", d: "Made 'case of the week' compulsory: every junior presents one patient they got wrong. Nobody is exempt." },
+          { y: "2024", t: "The ARIA curriculum", d: "Builds the training corpus for clinicians using the platform — the ward manual, algorithmised." },
+        ],
+        notes: [
+          { k: "The Rounds", v: "Saturday rounds are open to nurses, students and pharmacists. Attendance has outgrown the corridor twice." },
+          { k: "The Wrong Book", v: "Keeps a published-style log of his own diagnostic misses. New fellows receive it on day one, with a bookmark." },
+          { k: "The Chalk", v: "Refuses presentation software on teaching days. The blackboard survives, and so does the thinking." },
+          { k: "The Letters", v: "Writes every fellow a letter in their first week — their strengths, read with unsettling accuracy." },
+          { k: "The Exam", v: "As an examiner, gives the nervous candidate tea. 'The viva should measure knowledge, not courage.'" },
+          { k: "The Chapter", v: "Six textbook chapters, including the national postgraduate reference on interventional practice." },
+        ],
+        quote: "Teaching rounds are the only ward where the teacher is the student — the juniors operate, and the learning transfuses back.",
+        quoteBy: "convocation address, 2018",
+      },
+      {
+        id: "specialties", no: "05",
+        t1: "Specialties", t2: "six gates of the heart",
+        tint: "#dbe4ec", tintInk: "#2c4258",
+        lines: "Six gates of the heart — every rhythm, every repair, every second chance.",
+        cover: "media/doctors/card-specialties.jpg", hero: "media/doctors/hero-specialties.jpg",
+        chip: { title: "The Procedure Ledger", m1: "last 30 days: 46 cases", m2: "0 in-hospital mortalities" },
+        lede: "Six doors open off the same corridor, and Dr. Mehta has walked through each of them enough times to know their hinges. Interventional cardiology is the craft; structural heart, prevention and rehabilitation are its conscience; electrophysiology and heart failure are the collaborations that keep it honest.",
+        stats: [
+          { n: "6", l: "specialty gates" },
+          { n: "412", l: "PCI per year" },
+          { n: "38", l: "min · door-to-balloon" },
+          { n: "96.4%", l: "primary success" },
+        ],
+        timeline: [
+          { y: "I", t: "Interventional cardiology", d: "The core craft: 12,400 angiograms and counting, complex left-main work, chronic total occlusions others decline." },
+          { y: "II", t: "Structural heart & TAVR", d: "Trained in Paris, pioneered at home — valve replacements through the wrist, hearts fixed without opening the chest." },
+          { y: "III", t: "Preventive cardiology", d: "The clinic that runs on Tuesdays: risk scores, lifestyle contracts, and the long war against the first heart attack." },
+          { y: "IV", t: "Cardiac rehabilitation", d: "Built the region's first supervised rehab gym. Discharge is now the beginning of training, not the end of care." },
+          { y: "V", t: "Electrophysiology (collaborative)", d: "Pacemakers and arrhythmia clinics with the EP team — the electricians to his plumbers, as he introduces them." },
+          { y: "VI", t: "Heart failure clinic", d: "The Friday clinic where the ARIA engine flags every dry-weight creep before the patient notices their shoes." },
+        ],
+        notes: [
+          { k: "The 38 Minutes", v: "His rota holds a 38-minute median door-to-balloon time — the ambulance crews call it 'the Mehta window'." },
+          { k: "The Second Chances", v: "Over 300 primary-PCI patients from 2014–19 are alive and reviewed annually. The list is his quiet pride." },
+          { k: "The Decliner", v: "Known for taking the cases referred with the words 'nothing more to do'. Sometimes 'nothing' was premature." },
+          { k: "The Team", v: "Credits the cath lab nurses by name in every lecture. Their names are on his slides before his own." },
+          { k: "The Tool", v: "Uses the ARIA risk engine pre-procedure: high-risk patients get the second operator, the earlier slot, the longer consent." },
+          { k: "Therefore", v: "His referral note style — 'therefore, we will…' — has been copied by three generations of residents." },
+        ],
+        quote: "Six doors, one corridor. The patient walks through it once — make every step count for the team that waits.",
+        quoteBy: "cath lab induction, 2023",
+      },
+      {
+        id: "honours", no: "06",
+        t1: "First, do", t2: "no harm",
+        tint: "#f4e8d2", tintInk: "#5c451f",
+        lines: "The oath that signed every page — the medals that followed the mission.",
+        cover: "media/doctors/card-honours.jpg", hero: "media/doctors/hero-honours.jpg",
+        chip: { title: "The Award Shelf", m1: "newest: National Excellence Medal", m2: "MMXXIII · donated to the college" },
+        lede: "The honours arrived the way good patients do — unannounced, undeserved in his own telling, and impossible to turn away. Eleven awards, three orations, one national medal. The medals live in a college display case; the oath lives in the coat pocket, printed and re-printed, every year a little more worn.",
+        stats: [
+          { n: "11", l: "awards & honours" },
+          { n: "3", l: "named orations" },
+          { n: "1", l: "national medal" },
+          { n: "0", l: "acceptance speeches kept" },
+        ],
+        timeline: [
+          { y: "2016", t: "Best Young Interventional Cardiologist", d: "National cardiology conference. Thanked the ward boys by name; the hall remembered that longer than the paper." },
+          { y: "2019", t: "State Merit Award — health services", d: "For the 24/7 PCI rota. The certificate hangs in the ambulance bay, not his office." },
+          { y: "2021", t: "The Mehta Oration (est.)", d: "An annual oration named for his teacher — he delivers it every year beside the chair kept empty for him." },
+          { y: "2023", t: "National Excellence Medal", d: "For contributions to post-discharge care. Donated the cash prize to the college library the same evening." },
+          { y: "2024", t: "ARIA's founding line", d: "The platform's charter opens with the oath in his handwriting. The engineers kept the shaky 'H'." },
+        ],
+        notes: [
+          { k: "The Shelf", v: "All eleven trophies live at the medical college. His office wall holds the oath, the wrong-book and a child's crayon thank-you." },
+          { k: "The Orations", v: "Three named lectures delivered across the country; every one of them ends with the same slide — a discharge summary." },
+          { k: "The Medal", v: "The National Excellence Medal's cash prize funded forty textbooks for the library he studied in as a student." },
+          { k: "The Letter", v: "A patient's family once sent a thankyou addressed 'To the doctor who answers'. It is framed beside the oath." },
+          { k: "The Refusal", v: "Declined a 'Best Cardiologist' commercial listing award: 'Ranking the sick is not a service to them.'" },
+          { k: "The Inheritance", v: "His only displayed honour is a photocopy of his teacher's first prescription, given to him on graduation day." },
+        ],
+        quote: "Medals are stethoscopes of a different kind — they listen to the work, and then they hang quiet.",
+        quoteBy: "award acceptance, never delivered",
+      },
+    ];
+
+    /* ================================================================
+       THE SPIRAL CARDS — condensed chapter cards for the scroll scene
+    ================================================================ */
+    const CARDS = [
+      { tint: "",            cat: "01 · Experience",      title: "22 Years at the Table",   desc: "Twelve thousand hearts handed back their rhythm — from monsoon nights in Chandigarh to forty-one cath labs across two continents.", foot: "Cardiology" },
+      { tint: "tint-dark",   cat: "02 · Professionalism", title: "The Quiet Code",          desc: "Consent taken in the patient's own language, six languages deep. Nine consecutive years of clean audits, zero ethics flags.", foot: "The Charter" },
+      { tint: "tint-pink",   cat: "03 · Research",        title: "47 Papers, One Question", desc: "Evidence kept like a promise — the ARIA-READMIT cohort of 4,800 patients cut readmissions by 27%.", foot: "Publications" },
+      { tint: "tint-cream",  cat: "04 · Education",       title: "60+ Fellows Trained",     desc: "Saturday rounds open to nurses, students and pharmacists — the ward itself became the classroom.", foot: "Teaching" },
+      { tint: "tint-blue",   cat: "05 · Specialties",     title: "Six Gates of the Heart",  desc: "From complex left-main work to valves replaced through the wrist — thirty-eight minutes, door to balloon.", foot: "The Craft" },
+      { tint: "tint-beige",  cat: "06 · Honours",         title: "11 Awards, One Oath",     desc: "The National Excellence Medal lives in a college case; the oath lives in the coat pocket, reprinted every year.", foot: "Milestones" },
+    ];
+
+    /* ================================================================
+       ELEMENTS
+    ================================================================ */
+    const loader = document.getElementById("loader");
+    const loaderVal = document.getElementById("loaderVal");
+    const loaderNum = document.getElementById("loaderNum");
+    const header = document.getElementById("siteHeader");
+    const track = document.getElementById("track");
+    const rowA = document.getElementById("rowA");
+    const rowB = document.getElementById("rowB");
+    const sceneCaption = document.getElementById("sceneCaption");
+    const arc1 = document.getElementById("arc1");
+    const arc2 = document.getElementById("arc2");
+    const gridRule = document.getElementById("gridRule");
+    const cardsGrid = document.getElementById("cardsGrid");
+    const sceneFootL = document.getElementById("sceneFootL");
+    const sceneFootR = document.getElementById("sceneFootR");
+    const sceneHint = document.getElementById("sceneHint");
+    const chapter = document.getElementById("chapter");
+    const chInner = document.getElementById("chInner");
+    const chBack = document.getElementById("chBack");
+    const aboutOv = document.getElementById("about");
+    const aboutBtn = document.getElementById("aboutBtn");
+    const aboutClose = document.getElementById("aboutClose");
+    const soundBtn = document.getElementById("sound");
+    const soundState = document.getElementById("soundState");
+    const soundWaves = document.getElementById("soundWaves");
+    const soundMute = document.getElementById("soundMute");
+
+    /* ================================================================
+       BUILD — name rows (tiled) + cards grid
+    ================================================================ */
+    const TILES = 6;
+    const tile = (txt) => {
+      let s = "";
+      for (let i = 0; i < TILES; i++) s += `<span>${txt}&nbsp;&nbsp;&nbsp;</span>`;
+      return s;
+    };
+    rowA.innerHTML = tile("Dr.&nbsp;Arjun");
+    rowB.innerHTML = tile("Mehta");
+
+    const cardEls = [];
+    CARDS.forEach((c, i) => {
+      const el = document.createElement("article");
+      el.className = "doctor-card" + (c.tint ? " " + c.tint : "");
+      el.setAttribute("tabindex", "0");
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label", "Open chapter " + c.cat + " — " + c.title);
+      el.innerHTML = `
+        <div>
+          <span class="category">${c.cat}</span>
+          <h3 class="title">${c.title}</h3>
+          <p class="description">${c.desc}</p>
+        </div>
+        <div class="card-foot"><span>${c.foot}</span><span class="no">${String(i + 1).padStart(2, "0")} / 06</span></div>
+      `;
+      const open = () => { if (revealed) openChapter(i); };
+      el.addEventListener("click", open);
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+      cardsGrid.appendChild(el);
+      cardEls.push(el);
+    });
+
+    /* ================================================================
+       SMOOTH SCROLL — Lenis + GSAP ScrollTrigger
+    ================================================================ */
+    gsap.registerPlugin(ScrollTrigger);
+    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let lenis = null;
+    if (window.Lenis && !reduceMotion) {
+      lenis = new Lenis({ duration: 1.15, smoothWheel: true });
+      lenis.on("scroll", ScrollTrigger.update);
+      gsap.ticker.add((t) => lenis.raf(t * 1000));
+      gsap.ticker.lagSmoothing(0);
+    }
+
+    /* ================================================================
+       THE SCENE — name in motion (behind) + spiral cards (on top)
+    ================================================================ */
+    // Ribbon journey — each card travels the SAME path, offset in time, so
+    // the six cards form one connected ribbon: it rises from the bottom-left,
+    // sweeps across the centre IN FRONT of the name, curls away top-right,
+    // then each card POPs back into its grid slot. Keyframe offsets subtract
+    // each card's grid-slot delta so the whole ribbon shares one screen path.
+    const vw = () => innerWidth, vh = () => innerHeight;
+    const slotOffset = (el) => ({
+      dx: el.offsetLeft + el.offsetWidth / 2 - cardsGrid.clientWidth / 2,
+      dy: el.offsetTop + el.offsetHeight / 2 - cardsGrid.clientHeight / 2,
+    });
+    function ribbonStart(i) {
+      const s = slotOffset(cardEls[i]);
+      return {
+        x: () => -vw() * 0.62 - s.dx,
+        y: () => vh() * 0.74 - s.dy,
+        z: 360,
+        rotationY: 42, rotationX: 55, rotationZ: -14,
+        opacity: 0,
+      };
+    }
+    function ribbonJourney(i) {
+      const s = slotOffset(cardEls[i]);
+      const left = i % 2 === 0;
+      return {
+        keyframes: [
+          { x: () => -vw() * 0.16 - s.dx, y: () => vh() * 0.18 - s.dy, z: 90, rotationY: 16, rotationX: 14, rotationZ: -5, opacity: 1, duration: 1.7, ease: "power1.inOut" },
+          { x: () => vw() * 0.10 - s.dx, y: () => -vh() * 0.06 - s.dy, z: -30, rotationY: -6, rotationX: -4, rotationZ: 2, duration: 2.0, ease: "none" },
+          { x: () => vw() * 0.56 - s.dx, y: () => -vh() * 0.80 - s.dy, z: -260, rotationY: -36, rotationX: 26, rotationZ: 9, opacity: 0, duration: 1.5, ease: "power1.in" },
+          { x: () => (left ? -vw() * 0.52 : vw() * 0.54) - s.dx, y: () => (left ? vh() * 0.28 : -vh() * 0.32) - s.dy, z: 260, rotationY: left ? 26 : -24, rotationX: left ? 18 : -14, rotationZ: left ? -6 : 8, opacity: 0, duration: 0.5, ease: "none" },
+          { x: 0, y: 0, z: 0, rotationY: 0, rotationX: 0, rotationZ: 0, opacity: 1, duration: 1.7, ease: "power2.out" },
+        ],
+        duration: 7.4, ease: "none",
+      };
+    }
+
+    const tl = gsap.timeline({
+      defaults: { ease: "none" },
+      scrollTrigger: {
+        trigger: track,
+        start: "top top",
+        end: "bottom bottom",
+        scrub: 1.1,
+        invalidateOnRefresh: true,
+      },
+    });
+
+    // — Phase 1 · the name arrives in motion from both sides —
+    tl.fromTo(rowA, { xPercent: -17 }, { xPercent: -4.5, duration: 3.2, ease: "power1.inOut" }, 0)
+      .fromTo(rowB, { xPercent: 17 }, { xPercent: 4.5, duration: 3.2, ease: "power1.inOut" }, 0)
+      .fromTo(sceneCaption, { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 1.7, ease: "power1.out" }, 0.7)
+      .fromTo(".plus-mark", { opacity: 0 }, { opacity: 1, duration: 1.4 }, 1.1)
+      .fromTo(arc1, { opacity: 0 }, { opacity: 1, duration: 2.2 }, 0.2)
+      .fromTo(arc2, { opacity: 0 }, { opacity: 1, duration: 2.2 }, 0.4)
+      .to(arc1, { rotation: "-=7", duration: 14.4 }, 0)
+      .to(arc2, { rotation: "+=5", duration: 14.4 }, 0)
+
+      // — the rows keep travelling and CROSS at the centre, sliding out the opposite edges —
+      .to(rowA, { xPercent: 86, duration: 4.4, ease: "power1.inOut" }, 3.2)
+      .to(rowB, { xPercent: -108, duration: 4.4, ease: "power1.inOut" }, 3.2)
+
+      // — Phase 2 · the cards sweep through as one ribbon, ON TOP of the name —
+      .to(".plus-mark", { opacity: 0, duration: 1.2 }, 6.4);
+    cardEls.forEach((el, i) => tl.fromTo(el, ribbonStart(i), ribbonJourney(i), 2.4 + i * 0.8));
+
+    tl
+      // — the stage empties for a beat… —
+      .to(sceneCaption, { opacity: 0, y: -60, duration: 1.3, ease: "power1.in" }, 10.8)
+      .to([arc1, arc2], { opacity: 0, duration: 1.4 }, 10.6)
+
+      // — Phase 3 · …and the cards POP into the settled grid —
+      .fromTo(gridRule, { scaleX: 0, opacity: 0 }, { scaleX: 1, opacity: 1, duration: 1.5, ease: "power1.inOut" }, 13.9)
+      .fromTo([sceneFootL, sceneFootR, sceneHint], { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 1.3, ease: "power1.out", stagger: 0.12 }, 14.2)
+      .to({}, { duration: 1.2 }); // breathing room on the settled grid
+
+    /* ================================================================
+       HEADER fade outside the scene
+    ================================================================ */
+    ScrollTrigger.create({
+      trigger: track,
+      start: "bottom 55%",
+      onEnter: () => header.classList.add("hide"),
+      onLeaveBack: () => header.classList.remove("hide"),
+    });
+
+    /* ================================================================
+       CHAPTER OVERLAY
+    ================================================================ */
+    let revealed = false; // cards are clickable once the scene has begun
+
+    function openChapter(i) {
+      const ch = CHAPTERS[i];
+      chInner.innerHTML = `
+        <section class="ch-hero" style="--tint-ink:${ch.tintInk};background:${ch.tint}">
+          <p class="mast">Aria Medical · Chapter the Doctor · ${ch.no} / 06</p>
+          <h1><span class="t1">${ch.t1}</span><span class="t2">${ch.t2}</span></h1>
+          <i class="star">✦</i>
+          <p class="doc">Dr. Arjun Mehta · MD, DM Cardiology · Chief Clinical Officer</p>
+        </section>
+        <section class="ch-band">
+          <div class="art" style="background-image:url('${ch.hero}')"></div>
+          <a class="chip" href="#${ch.id}" onclick="return false;">
+            <span class="thumb" style="background-image:url('${ch.cover}')"></span>
+            <span><b>${ch.chip.title}</b><small>${ch.chip.m1}</small><small>${ch.chip.m2}</small></span>
+            <span class="go">↗</span>
+          </a>
+        </section>
+        <section class="ch-body">
+          <p class="lede rv">${ch.lede}</p>
+          <div class="rv">
+            <p class="sec-eyebrow">The numbers</p>
+            <div class="stats2">
+              ${ch.stats.map(s => `<div class="stat2"><b>${s.n}</b><small>${s.l}</small></div>`).join("")}
+            </div>
+          </div>
+          <div class="rv">
+            <p class="sec-eyebrow">The record</p>
+            <div class="timeline">
+              ${ch.timeline.map(t => `<div class="t-row"><div class="y">${t.y}</div><div><h3>${t.t}</h3><p>${t.d}</p></div></div>`).join("")}
+            </div>
+          </div>
+          <div class="rv">
+            <p class="sec-eyebrow">Field notes</p>
+            <div class="notes">
+              ${ch.notes.map(n2 => `<div class="note"><p class="k">${n2.k}</p><p>${n2.v}</p></div>`).join("")}
+            </div>
+          </div>
+          <div class="quote rv">
+            <span class="mark">“</span>
+            <p>${ch.quote}</p>
+            <small>— ${ch.quoteBy}</small>
+          </div>
+        </section>
+        <div class="ch-end"><a data-back>Back to the scene ↑</a></div>
+      `;
+      chapter.classList.add("open");
+      chapter.setAttribute("aria-hidden", "false");
+      chapter.scrollTop = 0;
+      if (lenis) lenis.stop();
+      history.replaceState(null, "", "#" + ch.id);
+      const io = new IntersectionObserver((es) => es.forEach(en => {
+        if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+      }), { threshold: 0.18 });
+      chInner.querySelectorAll(".rv").forEach(el => io.observe(el));
+      chInner.querySelector("[data-back]").addEventListener("click", closeChapter);
+    }
+    function closeChapter() {
+      chapter.classList.remove("open");
+      chapter.setAttribute("aria-hidden", "true");
+      if (lenis) lenis.start();
+      history.replaceState(null, "", location.pathname);
+    }
+    chBack.addEventListener("click", closeChapter);
+    addEventListener("hashchange", () => {
+      const id = location.hash.slice(1);
+      const idx = CHAPTERS.findIndex(c => c.id === id);
+      if (idx >= 0) openChapter(idx);
+      else if (chapter.classList.contains("open")) closeChapter();
+    });
+
+    /* ================================================================
+       SCENE CORNER LINK + REPLAY
+    ================================================================ */
+    document.getElementById("toRecord").addEventListener("click", () => {
+      const target = document.getElementById("record");
+      if (lenis) lenis.scrollTo(target, { duration: 1.6 });
+      else target.scrollIntoView({ behavior: "smooth" });
+    });
+    document.getElementById("replayTop").addEventListener("click", (e) => {
+      e.preventDefault();
+      if (lenis) lenis.scrollTo(0, { duration: 1.8 });
+      else scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    /* ================================================================
+       ABOUT
+    ================================================================ */
+    function toggleAbout(open) {
+      aboutOv.classList.toggle("open", open);
+      aboutOv.setAttribute("aria-hidden", String(!open));
+      if (lenis) open ? lenis.stop() : lenis.start();
+    }
+    aboutBtn.addEventListener("click", () => toggleAbout(true));
+    aboutClose.addEventListener("click", () => toggleAbout(false));
+    aboutOv.addEventListener("click", (e) => { if (e.target === aboutOv) toggleAbout(false); });
+
+    /* ================================================================
+       SOUND
+    ================================================================ */
+    const audio = new Audio("media/aria-theme.mp3");
+    audio.loop = true; audio.volume = 0.5;
+    let soundOn = false;
+    soundBtn.addEventListener("click", () => {
+      soundOn = !soundOn;
+      if (soundOn) audio.play().catch(() => {});
+      else audio.pause();
+      soundState.textContent = soundOn ? "Sound on" : "Sound off";
+      soundWaves.style.display = soundOn ? "" : "none";
+      soundMute.style.display = soundOn ? "none" : "";
+      soundBtn.setAttribute("aria-pressed", String(soundOn));
+    });
+
+    /* ================================================================
+       IST CLOCK
+    ================================================================ */
+    const istClock = document.getElementById("istClock");
+    const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" });
+    const tickClock = () => { istClock.textContent = "IST → " + fmt.format(new Date()); };
+    tickClock(); setInterval(tickClock, 30000);
+
+    /* ================================================================
+       KEYBOARD
+    ================================================================ */
+    addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (chapter.classList.contains("open")) closeChapter();
+        else if (aboutOv.classList.contains("open")) toggleAbout(false);
+      }
+    });
+
+    /* ================================================================
+       INTRO — preloader, then release the scene
+    ================================================================ */
+    revealed = true;
+    const hashId = location.hash.slice(1);
+    const hashIdx = CHAPTERS.findIndex(c => c.id === hashId);
+
+    // hold the page at the top while loading
+    if (lenis) lenis.stop();
+    scrollTo(0, 0);
+
+    let p = 0;
+    const pTimer = setInterval(() => {
+      const jump = p < 30 ? 9 + Math.random() * 12 : p < 55 ? 6 + Math.random() * 9 : 10 + Math.random() * 16;
+      p = Math.min(100, Math.round(p + jump));
+      loaderVal.textContent = p;
+      const styleIdx = Math.floor(p / 25) % 3;
+      loaderNum.classList.remove("style-b", "style-c");
+      if (styleIdx === 1) loaderNum.classList.add("style-b");
+      if (styleIdx === 2) loaderNum.classList.add("style-c");
+      if (p >= 100) {
+        clearInterval(pTimer);
+        setTimeout(() => {
+          loader.classList.add("done");
+          if (lenis) lenis.start();
+          ScrollTrigger.refresh();
+          setTimeout(() => loader.remove(), 1200);
+          if (hashIdx >= 0) setTimeout(() => openChapter(hashIdx), 1500);
+        }, 420);
+      }
+    }, 210);
+  })();
+  </script>
+</body>
+</html>

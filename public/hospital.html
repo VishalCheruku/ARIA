@@ -1,0 +1,904 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>ARIA — Hospital Management</title>
+  <meta name="description" content="ARIA hospital operations console — departments, beds and staff on a live editorial carousel." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #f2f0ea;
+      --ink: #161512;
+      --muted: #7b786f;
+      --line: rgba(22, 21, 18, .16);
+      --line-strong: rgba(22, 21, 18, .32);
+      --red: #d92b26;
+      --green: #175e43;
+      --amber: #c88411;
+      --ease: cubic-bezier(.19, 1, .22, 1);
+      --serif: "Instrument Serif", Georgia, serif;
+      --grot: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --pad: clamp(18px, 2.2vw, 30px);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--grot);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    body::before {
+      /* faint studio glows, ARIA-tinted */
+      content: ""; position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(217, 43, 38, .05), transparent 34%),
+        radial-gradient(circle at 92% 100%, rgba(34, 51, 92, .05), transparent 36%);
+    }
+    button { cursor: pointer; font: inherit; color: inherit; background: none; border: 0; }
+    a { color: inherit; }
+    ::selection { background: rgba(217, 43, 38, .16); }
+
+    /* ---------- grain ---------- */
+    .grain {
+      position: fixed; inset: -40px; z-index: 80; pointer-events: none; opacity: .55;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.08 0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* ---------- loader ---------- */
+    #loader {
+      position: fixed; inset: 0; z-index: 100; background: var(--paper);
+      display: grid; place-items: center; text-align: center;
+      transition: transform .85s var(--ease);
+    }
+    #loader.done { transform: translateY(-101%); }
+    #loader .l-brand { font: 400 clamp(64px, 10vw, 110px)/1 var(--serif); letter-spacing: .02em; }
+    #loader .l-sub { margin-top: 14px; font: 500 9px var(--mono); letter-spacing: .34em; color: var(--muted); }
+    #loader .l-count { position: absolute; left: var(--pad); bottom: calc(var(--pad) - 2px); font: 500 10px var(--mono); letter-spacing: .12em; color: var(--muted); }
+    #loader .l-bar { position: absolute; left: var(--pad); right: var(--pad); bottom: var(--pad); height: 1px; background: var(--line); }
+    #loader .l-bar i { position: absolute; inset: 0; background: var(--ink); transform-origin: 0 50%; transform: scaleX(0); }
+
+    /* ---------- nav ---------- */
+    nav {
+      position: fixed; inset: 0 0 auto 0; z-index: 60; height: 58px;
+      display: flex; align-items: center; padding: 0 var(--pad);
+    }
+    .nav-clock { margin-left: auto; font: 500 9px var(--mono); letter-spacing: .16em; color: var(--muted); text-transform: uppercase; }
+    .nav-center {
+      position: absolute; left: 50%; top: 12px; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 4px;
+      background: rgba(255, 255, 255, .92); border: 1px solid var(--line);
+      border-radius: 999px; padding: 7px 10px 7px 16px;
+      box-shadow: 0 14px 34px rgba(30, 26, 18, .10);
+      backdrop-filter: blur(10px);
+    }
+    .nav-logo { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font: 700 12.5px/1 var(--grot); letter-spacing: -.02em; margin-right: 10px; }
+    .nav-logo i { width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: pulse 1.8s infinite; }
+    @keyframes pulse { 70% { box-shadow: 0 0 0 7px rgba(217, 43, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(217, 43, 38, 0); } }
+    .nav-link {
+      position: relative; display: inline-flex; align-items: center; gap: 6px;
+      font: 500 11px/1 var(--grot); letter-spacing: .01em; color: rgba(22, 21, 18, .62);
+      text-decoration: none; padding: 9px 11px; border-radius: 999px; transition: color .2s ease;
+    }
+    .nav-link:hover { color: var(--ink); }
+    .nav-link.active { color: var(--ink); }
+    .nav-link.active::after { content: ""; position: absolute; left: 50%; bottom: 2px; width: 3px; height: 3px; border-radius: 50%; background: var(--ink); transform: translateX(-50%); }
+    .nav-link .chev { font-size: 8px; transition: transform .3s var(--ease); }
+    .nav-link[aria-expanded="true"] .chev { transform: rotate(180deg); }
+
+    /* ---------- directory dropdown ---------- */
+    .backdrop {
+      position: fixed; inset: 0; z-index: 55; background: rgba(18, 16, 12, .20);
+      opacity: 0; pointer-events: none; transition: opacity .35s ease;
+    }
+    .backdrop.open { opacity: 1; pointer-events: auto; }
+    .directory {
+      position: fixed; z-index: 65; left: 50%; top: 62px; width: 308px;
+      transform: translateX(-50%) translateY(-10px); opacity: 0; pointer-events: none;
+      background: #fffefb; border: 1px solid var(--line); border-radius: 12px;
+      box-shadow: 0 34px 90px rgba(28, 24, 16, .22);
+      transition: transform .4s var(--ease), opacity .3s ease;
+      overflow: hidden;
+    }
+    .directory.open { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
+    .directory header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px 10px; border-bottom: 1px solid var(--line);
+      font: 500 8.5px var(--mono); letter-spacing: .22em; color: var(--muted);
+    }
+    .directory ul { list-style: none; max-height: min(46vh, 356px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(22,21,18,.35) transparent; }
+    .directory li { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; transition: background .18s ease; }
+    .directory li:hover { background: #f5f3ec; }
+    .directory li .n { font: 500 8.5px var(--mono); color: var(--muted); letter-spacing: .08em; width: 18px; }
+    .directory li .nm { font: 500 12px var(--grot); letter-spacing: .01em; flex: 1; }
+    .directory li .oc { font: 500 9px var(--mono); color: var(--muted); }
+    .directory li .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .directory li.active .nm { font-weight: 700; }
+    .directory li.active .n { color: var(--ink); }
+
+    /* ---------- disc stage ---------- */
+    .stage { position: fixed; inset: 0; z-index: 30; perspective: 1200px; }
+    .discs { position: absolute; inset: 0; transform-style: preserve-3d; }
+    .disc {
+      position: absolute; left: 50%; top: 50%;
+      width: var(--d); height: var(--d); margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2);
+      border-radius: 50%; will-change: transform, opacity;
+      background: linear-gradient(145deg, #e9e9e6, #c9c8c2 42%, #f2f2ee 70%, #b9b8b2);
+      box-shadow: 0 60px 90px rgba(32, 27, 18, .25);
+      cursor: pointer;
+    }
+    .disc .face {
+      position: absolute; inset: 2.6%; border-radius: 50%; overflow: hidden;
+      background: var(--fc, #ddd); color: var(--fi, #161512);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18), inset 0 0 60px rgba(0, 0, 0, .16);
+    }
+    .disc .face::after { /* sheen */
+      content: ""; position: absolute; inset: 0; border-radius: 50%;
+      background: linear-gradient(128deg, rgba(255, 255, 255, .30), rgba(255, 255, 255, 0) 38%, rgba(0, 0, 0, .14) 86%);
+    }
+    .disc .ringtext { position: absolute; inset: 4.5%; opacity: .9; }
+    .disc .ringtext text { font: 600 calc(var(--d) * .0215) var(--grot); letter-spacing: .34em; fill: currentColor; opacity: .72; text-transform: uppercase; }
+    .disc .face-label {
+      position: absolute; left: 6%; right: 6%; top: 27%; text-align: center;
+      font: 800 calc(var(--d) * .125)/0.98 var(--grot); letter-spacing: -.015em; text-transform: uppercase;
+    }
+    .disc.alt-face .face-label { font: italic 400 calc(var(--d) * .14)/1.02 var(--serif); text-transform: none; letter-spacing: 0; top: 21%; }
+    .disc .face-sub { position: absolute; left: 10%; right: 10%; top: 63%; text-align: center; font: 600 calc(var(--d) * .026) var(--grot); letter-spacing: .3em; text-transform: uppercase; opacity: .8; }
+    .disc .face-stars { position: absolute; left: 0; right: 0; bottom: 17%; text-align: center; font-size: calc(var(--d) * .03); letter-spacing: .5em; text-indent: .5em; }
+    .disc .hole {
+      position: absolute; left: 50%; top: 50%; width: 17%; height: 17%;
+      transform: translate(-50%, -50%); border-radius: 50%;
+      background: radial-gradient(circle at 38% 32%, #ffffff, #edece6 58%, #d8d6cd);
+      box-shadow: 0 0 0 calc(var(--d) * .012) rgba(252, 251, 246, .95), 0 0 0 calc(var(--d) * .016) rgba(0, 0, 0, .22),
+        inset 0 calc(var(--d) * .01) calc(var(--d) * .02) rgba(0, 0, 0, .28);
+    }
+
+    /* ---------- film text block ---------- */
+    .film { position: fixed; z-index: 40; left: var(--pad); top: 72px; width: min(360px, 40vw); pointer-events: none; }
+    .film .eyebrow { font: 500 8.5px var(--mono); letter-spacing: .26em; color: var(--muted); text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+    .film .eyebrow b { font-weight: 600; color: var(--ink); }
+    .film h1 {
+      margin: 12px 0 20px; font: 400 clamp(34px, 3.6vw, 50px)/0.98 var(--serif);
+      letter-spacing: .015em; text-transform: uppercase;
+    }
+    .meta { width: 100%; }
+    .meta .row {
+      display: flex; justify-content: space-between; align-items: center; gap: 14px;
+      padding: 7px 0 6px; border-bottom: 1px solid var(--line);
+    }
+    .meta .row:first-child { border-top: 1px solid var(--line); }
+    .meta .k { font: 500 8px var(--mono); letter-spacing: .2em; color: var(--muted); text-transform: uppercase; }
+    .meta .v { font: 500 12px var(--grot); letter-spacing: .01em; text-align: right; display: inline-flex; align-items: center; gap: 8px; }
+    .meta .v.st-ok { color: var(--green); } .meta .v.st-busy { color: var(--amber); } .meta .v.st-crit { color: var(--red); }
+    .meta .minibar { width: 62px; height: 2px; background: var(--line); position: relative; }
+    .meta .minibar i { position: absolute; inset: 0; background: var(--ink); transform-origin: 0 50%; transform: scaleX(0); transition: transform 1s var(--ease); }
+
+    /* ---------- bottom notes (critic-quote style) ---------- */
+    .notes {
+      position: fixed; z-index: 40; left: 50%; bottom: clamp(30px, 5.4vh, 46px); transform: translateX(-50%);
+      display: flex; gap: clamp(30px, 4.5vw, 64px); text-align: center; pointer-events: none;
+    }
+    .note { width: min(236px, 30vw); }
+    .note .dots { font-size: 8.5px; letter-spacing: .42em; text-indent: .42em; }
+    .note .src { margin: 9px 0 7px; font: 500 8px var(--mono); letter-spacing: .24em; color: var(--muted); text-transform: uppercase; }
+    .note blockquote { font: 400 16.5px/1.32 var(--serif); text-transform: uppercase; letter-spacing: .015em; }
+
+    /* ---------- corners ---------- */
+    .hint { position: fixed; z-index: 40; left: var(--pad); bottom: 34px; font: 500 9px var(--mono); letter-spacing: .2em; color: var(--muted); text-transform: uppercase; transition: opacity .8s ease; }
+    .hint .big { color: var(--ink); }
+    .hint.off { opacity: 0; }
+    .ticker { position: fixed; z-index: 40; right: var(--pad); bottom: 34px; text-align: right; }
+    .ticker .alert-line { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font: 500 9px var(--mono); letter-spacing: .14em; color: var(--muted); text-transform: uppercase; transition: opacity .45s ease; }
+    .ticker .alert-line i { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+    .ticker .alert-line.fade { opacity: 0; }
+    .ticker .broadcast {
+      margin-top: 10px; display: inline-flex; gap: 7px; align-items: baseline;
+      font: 600 11px var(--grot); letter-spacing: .02em;
+      border-bottom: 1px solid var(--line-strong); padding-bottom: 2px; transition: border-color .2s ease, color .2s ease;
+    }
+    .ticker .broadcast:hover { color: var(--red); border-color: var(--red); }
+    .ticker .broadcast em { font: 500 9px var(--mono); color: var(--red); font-style: normal; }
+
+    /* ---------- text swap motion ---------- */
+    .swappable { transition: transform .26s var(--ease), opacity .24s ease, filter .26s ease; }
+    .leave-up { transform: translateY(-16px); opacity: 0; filter: blur(3px); }
+    .leave-down { transform: translateY(16px); opacity: 0; filter: blur(3px); }
+    .enter-pre { transition: none; }
+
+    /* ---------- reveal ---------- */
+    body.ready .film .swappable, body.ready .notes .swappable { opacity: 1; transform: none; filter: none; }
+    body:not(.ready) .film .swappable, body:not(.ready) .notes .swappable { opacity: 0; transform: translateY(22px); }
+    body.ready .hint, body.ready .ticker, body.ready nav, body.ready .nav-clock { opacity: 1; transition: opacity .9s ease .55s; }
+    body:not(.ready) .hint, body:not(.ready) .ticker, body:not(.ready) nav, body:not(.ready) .nav-clock { opacity: 0; }
+
+    /* ---------- responsive ---------- */
+    @media (max-width: 860px) {
+      :root { --pad: 16px; }
+      .film { width: min(300px, 74vw); top: 64px; }
+      .film h1 { font-size: clamp(30px, 8.6vw, 40px); }
+      .meta .v { font-size: 11px; }
+      .notes { gap: 26px; bottom: 84px; }
+      .note { width: min(200px, 40vw); }
+      .note blockquote { font-size: 13.5px; }
+      .note.opt { display: none; }
+      .hint { bottom: 40px; }
+      .ticker { left: var(--pad); right: var(--pad); bottom: 16px; display: flex; justify-content: space-between; align-items: baseline; }
+      .ticker .broadcast { margin-top: 0; }
+      .nav-center { top: 10px; padding: 6px 8px 6px 13px; }
+      .nav-link { padding: 8px 9px; }
+      .nav-clock { display: none; }
+    }
+    @media (max-width: 560px) {
+      .note.opt2 { display: none; }
+      .directory { width: min(320px, calc(100vw - 24px)); }
+    }
+    /* ---------- medicine book (phone-book of medicines) ---------- */
+    .med-launch {
+      position: fixed; z-index: 45; left: 50%; bottom: 10px; transform: translateX(-50%);
+      display: inline-flex; align-items: center; gap: 9px;
+      background: rgba(255, 255, 254, .94); border: 1px solid var(--line-strong); border-radius: 999px;
+      padding: 10px 18px; font: 600 10.5px var(--grot); letter-spacing: .14em; text-transform: uppercase;
+      box-shadow: 0 14px 34px rgba(30, 26, 18, .12); backdrop-filter: blur(8px);
+      transition: color .2s ease, border-color .2s ease;
+    }
+    .med-launch i { width: 6px; height: 6px; border-radius: 50%; background: var(--red); flex: none; animation: pulse 1.8s infinite; }
+    .med-launch b { font-weight: 700; }
+    .med-launch:hover { color: var(--red); border-color: var(--red); }
+    .med-book {
+      position: fixed; z-index: 70; left: 50%; bottom: 0;
+      transform: translateX(-50%) translateY(26px); opacity: 0; pointer-events: none;
+      width: min(880px, calc(100vw - 28px)); height: min(76vh, 690px);
+      display: flex; flex-direction: column; overflow: hidden;
+      background: #fffefb; border: 1px solid var(--line); border-bottom: 0;
+      border-radius: 14px 14px 0 0; box-shadow: 0 -30px 90px rgba(28, 24, 16, .30);
+      transition: transform .5s var(--ease), opacity .35s ease;
+    }
+    .med-book.open { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
+    .mb-head {
+      display: flex; align-items: center; gap: 14px; padding: 13px 18px 11px; border-bottom: 1px solid var(--line);
+      font: 500 8.5px var(--mono); letter-spacing: .22em; color: var(--muted);
+    }
+    .mb-head .mb-title { text-transform: uppercase; }
+    .mb-head .mb-count { margin-left: auto; color: var(--ink); }
+    .mb-close { font: 400 20px/1 var(--grot); color: var(--muted); padding: 0 2px; transition: color .2s ease; }
+    .mb-close:hover { color: var(--red); }
+    .mb-searchrow { padding: 12px 18px; border-bottom: 1px solid var(--line); }
+    .mb-searchrow input {
+      width: 100%; border: 0; outline: 0; background: transparent;
+      font: 400 21px/1.2 var(--serif); color: var(--ink); letter-spacing: .01em;
+    }
+    .mb-searchrow input::placeholder { color: rgba(22, 21, 18, .34); font-style: italic; }
+    .mb-searchrow input::-webkit-search-cancel-button { -webkit-appearance: none; }
+    .mb-body { flex: 1; display: flex; min-height: 0; position: relative; }
+    .mb-rail {
+      display: flex; flex-direction: column; justify-content: space-between; align-items: center;
+      width: 30px; padding: 10px 0; border-right: 1px solid var(--line); overflow: hidden;
+      font: 500 8.5px var(--mono); color: var(--muted);
+    }
+    .mb-rail button { padding: 1px 0; color: var(--muted); transition: color .15s ease; }
+    .mb-rail button:hover { color: var(--red); }
+    .mb-list {
+      flex: 1; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 14px;
+      scrollbar-width: thin; scrollbar-color: rgba(22, 21, 18, .3) transparent;
+    }
+    .mb-letter {
+      position: sticky; top: 0; z-index: 2; padding: 7px 20px 5px; background: #f7f5ee;
+      border-bottom: 1px solid var(--line); border-top: 1px solid var(--line);
+      font: 600 10px var(--mono); letter-spacing: .3em; color: var(--muted);
+    }
+    .mb-row {
+      display: flex; align-items: baseline; gap: 12px; padding: 8px 20px 7px;
+      cursor: pointer; border-bottom: 1px solid rgba(22, 21, 18, .07); transition: background .15s ease;
+    }
+    .mb-row:hover { background: #f7f5ee; }
+    .mb-row .nm { font: 500 14px var(--grot); letter-spacing: .01em; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mb-row .nm i { font: italic 400 13px var(--serif); color: var(--muted); }
+    .mb-row .ct { font: 500 7.5px var(--mono); letter-spacing: .16em; color: var(--muted); text-transform: uppercase; white-space: nowrap; }
+    .mb-row .tag { font: 600 7px var(--mono); letter-spacing: .14em; color: var(--ink); border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 7px; white-space: nowrap; }
+    .mb-empty { padding: 30px 22px; font: italic 400 17px var(--serif); color: var(--muted); }
+    .mb-detail { position: absolute; inset: 0; z-index: 5; background: #fffefb; overflow-y: auto; overscroll-behavior: contain; padding: 14px 26px 26px; scrollbar-width: thin; scrollbar-color: rgba(22,21,18,.3) transparent; }
+    .mbd-top { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
+    .mbd-back { font: 500 9px var(--mono); letter-spacing: .2em; color: var(--muted); transition: color .2s ease; }
+    .mbd-back:hover { color: var(--red); }
+    .mbd-cat { margin-left: auto; font: 500 8px var(--mono); letter-spacing: .2em; color: var(--muted); text-transform: uppercase; }
+    .mbd-name { font: 400 clamp(26px, 4vw, 38px)/1.05 var(--serif); letter-spacing: .01em; margin: 6px 0 4px; }
+    .mbd-salt { font: 500 11px var(--grot); color: var(--muted); margin: 0 0 16px; }
+    .mbd-salt b { color: var(--ink); font-weight: 600; }
+    .mbd-block { margin: 0 0 15px; padding-top: 11px; border-top: 1px solid var(--line); }
+    .mbd-block > span { display: block; font: 500 8px var(--mono); letter-spacing: .24em; color: var(--muted); text-transform: uppercase; margin-bottom: 7px; }
+    .mbd-block p { font: 400 15px/1.55 var(--grot); }
+    .mbd-block .serif { font: italic 400 17.5px/1.45 var(--serif); }
+    .mbd-block ul { list-style: none; display: flex; flex-wrap: wrap; gap: 7px; }
+    .mbd-block ul li {
+      font: 500 11.5px var(--grot); padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: #fbfaf5;
+    }
+    .mbd-alert > p { color: var(--red); }
+    .mbd-brands { display: flex; flex-wrap: wrap; gap: 7px; }
+    .mbd-brands button {
+      font: 500 11.5px var(--grot); padding: 5px 11px; border: 1px solid var(--line-strong); border-radius: 999px;
+      transition: color .15s ease, border-color .15s ease;
+    }
+    .mbd-brands button:hover { color: var(--red); border-color: var(--red); }
+    .mbd-none { font: italic 400 13px var(--serif); color: var(--muted); }
+    .mb-foot {
+      padding: 9px 18px; border-top: 1px solid var(--line); background: #f7f5ee;
+      font: 500 7.5px var(--mono); letter-spacing: .22em; color: var(--muted); text-transform: uppercase; text-align: center;
+    }
+    .mb-loading { padding: 40px 24px; font: italic 400 18px var(--serif); color: var(--muted); }
+    @media (max-width: 860px) {
+      .med-launch { bottom: 46px; padding: 9px 14px; font-size: 9.5px; }
+      .med-book { width: calc(100vw - 12px); height: 80vh; }
+      .mb-rail { display: none; }
+      .mb-searchrow input { font-size: 18px; }
+      .mb-detail { padding: 12px 16px 22px; }
+    }
+    @media (max-width: 560px) {
+      .hint { display: none; }
+      .med-launch { bottom: 42px; }
+      .mb-row .ct { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="loader" aria-hidden="true">
+    <div>
+      <div class="l-brand">ARIA</div>
+      <div class="l-sub">HOSPITAL&nbsp;MANAGEMENT</div>
+    </div>
+    <div class="l-count" id="loadCount">000</div>
+    <div class="l-bar"><i id="loadBar"></i></div>
+  </div>
+
+  <nav aria-label="Console">
+    <div class="nav-center">
+      <a class="nav-logo" href="/"><i></i>ARIA</a>
+      <a class="nav-link active" href="/hospital.html" aria-current="page">Wards</a>
+      <a class="nav-link" href="/doctors.html">Doctors</a>
+      <button class="nav-link" id="dirBtn" aria-expanded="false" aria-controls="directory">Directory <span class="chev">▾</span></button>
+    </div>
+    <span class="nav-clock" id="clock">—</span>
+  </nav>
+
+  <div class="backdrop" id="backdrop"></div>
+  <aside class="directory" id="directory" aria-label="Department directory">
+    <header><span>DIRECTORY</span><span id="dirCount">08 WARDS</span></header>
+    <ul id="dirList"></ul>
+  </aside>
+
+  <main class="stage" id="stage">
+    <div class="discs" id="discs"></div>
+  </main>
+
+  <section class="film" aria-live="polite">
+    <p class="eyebrow swappable" id="eyebrow">STATION 05 · <b id="eyebrowIdx">DEPT 01 / 08</b></p>
+    <h1 class="swappable" id="title">Cardiology</h1>
+    <div class="meta swappable" id="meta"></div>
+  </section>
+
+  <div class="notes">
+    <figure class="note swappable" id="noteA"></figure>
+    <figure class="note opt swappable" id="noteB"></figure>
+  </div>
+
+  <p class="hint" id="hint">SCROLL ↓ SWITCH WARDS — <span class="big" id="counter">01 / 08</span></p>
+
+  <div class="ticker">
+    <p class="alert-line" id="alertLine"><i></i><span>SYNCING FEED…</span></p>
+    <button class="broadcast" id="broadcastBtn">Broadcast SMS to families <em>↗</em></button>
+  </div>
+
+  <div class="grain" aria-hidden="true"></div>
+
+  <button class="med-launch" id="medLaunch" aria-haspopup="dialog" aria-expanded="false"><i></i>Medicine Book · <b id="medCount">…</b></button>
+
+  <section class="med-book" id="medBook" role="dialog" aria-modal="true" aria-label="Medicine book" aria-hidden="true">
+    <header class="mb-head">
+      <span class="mb-title">MEDICINE BOOK — PLAIN-WORD DIRECTORY</span>
+      <span class="mb-count" id="mbMeta">…</span>
+      <button class="mb-close" id="medClose" aria-label="Close medicine book">×</button>
+    </header>
+    <div class="mb-searchrow">
+      <input id="medSearch" type="search" placeholder="Search a medicine — brand, salt, or what it treats…" autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="mb-body" id="mbBody">
+      <aside class="mb-rail" id="medRail" aria-hidden="true"></aside>
+      <div class="mb-list" id="medList"><p class="mb-loading">Opening the medicine book…</p></div>
+      <div class="mb-detail" id="medDetail" hidden></div>
+    </div>
+    <footer class="mb-foot">Educational reference only — always follow your doctor's prescription</footer>
+  </section>
+
+  <script>
+    /* =====================================================================
+       ARIA — Hospital Management, in the visual language of an editorial
+       film-archive carousel: virtual scroll snaps between departments,
+       discs tilt through a diagonal 3D fan, text crossfades per station.
+       ===================================================================== */
+
+    const DEPTS = [
+      {
+        name: "Cardiology", short: "Cardio&shy;logy", occ: 41, cap: 48, st: "crit",
+        head: "Dr. Kavitha Menon", floor: "Level 2 · East Wing", duty: "Day · 16 staff",
+        color: { bg: "#d92b26", ink: "#ffefdd" }, alt: false,
+        ring: "ARIA HEALTH SYSTEM — STATION 05 — 41 OF 48 BEDS — LIVE CONSOLE —",
+        noteA: { src: "Ward note · 18:42", text: "“Post-MI bay stabilised, one telemetry bed free”" },
+        noteB: { src: "ARIA engine · live", text: "“Risk spike on bed 12 — family called within 60s”" },
+      },
+      {
+        name: "I.C.U.", short: "I.C.U.", occ: 22, cap: 24, st: "crit",
+        head: "Dr. H. Chandra", floor: "Level 3 · Critical Block", duty: "Night · 11 staff",
+        color: { bg: "#22335c", ink: "#e8ff6a" }, alt: false,
+        ring: "CRITICAL CARE — TELE-ICU LINKED — 22 OF 24 BEDS — ARIA WATCH —",
+        noteA: { src: "Ward note · 18:15", text: "“SpO₂ recovering in bay 4, bay 7 open for triage”" },
+        noteB: { src: "ARIA engine · live", text: "“Ventilator auto-check passed — 03:00 round logged”" },
+      },
+      {
+        name: "General Medicine", short: "General Medicine", occ: 86, cap: 104, st: "busy",
+        head: "Dr. Arun Prasad", floor: "Level 1 · Central", duty: "Day · 24 staff",
+        color: { bg: "#175e43", ink: "#f2efe2" }, alt: true,
+        ring: "GENERAL MEDICINE — 86 OF 104 BEDS — BUSY — ARIA HEALTH SYSTEM —",
+        noteA: { src: "Ward note · 17:58", text: "“Three missed-dose confirmations, nurse dispatched”" },
+        noteB: { src: "ARIA engine · live", text: "“Discharge papers OCR-scanned for six patients”" },
+      },
+      {
+        name: "Oncology", short: "Oncology", occ: 28, cap: 44, st: "busy",
+        head: "Dr. Meera Raghavan", floor: "Level 4 · North Tower", duty: "Day · 12 staff",
+        color: { bg: "#6b4fc7", ink: "#f4ecff" }, alt: true,
+        ring: "ONCOLOGY — DAY-CARE CHAIRS LIVE — 28 OF 44 BEDS — STATION 05 —",
+        noteA: { src: "Ward note · 16:40", text: "“Chemo chairs sixty percent — follow-up call answered”" },
+        noteB: { src: "ARIA engine · live", text: "“Medicine list confirmed over voice — refill queued”" },
+      },
+      {
+        name: "Orthopedics", short: "Ortho&shy;pedics", occ: 33, cap: 52, st: "ok",
+        head: "Dr. S. Bhatt", floor: "Level 2 · West Wing", duty: "Day · 10 staff",
+        color: { bg: "#e88c1f", ink: "#231a08" }, alt: false,
+        ring: "ORTHOPEDICS — TWO THEATRES LIVE — 33 OF 52 BEDS — ARIA CONSOLE —",
+        noteA: { src: "Ward note · 17:20", text: "“Two theatres in use, three slots open tomorrow”" },
+        noteB: { src: "ARIA engine · live", text: "“Physio schedule synced — eight post-op follow-ups armed”" },
+      },
+      {
+        name: "Pediatrics", short: "Pedia&shy;trics", occ: 24, cap: 40, st: "ok",
+        head: "Dr. N. Kaur", floor: "Level 1 · Garden Wing", duty: "Day · 9 staff",
+        color: { bg: "#ffd23f", ink: "#8a1f26" }, alt: true,
+        ring: "PEDIATRICS — VACCINE COLD-CHAIN CLEAN — 24 OF 40 BEDS — ARIA —",
+        noteA: { src: "Ward note · 16:05", text: "“Vaccine fridge log clean, play room reopened”" },
+        noteB: { src: "ARIA engine · live", text: "“Growth charts digitised — parents SMS-confirmed”" },
+      },
+      {
+        name: "Emergency Ward", short: "Emergency", occ: 18, cap: 30, st: "busy",
+        head: "Dr. V. Iyer", floor: "Ground · Ambulance Bay", duty: "Day + Night · 18 staff",
+        color: { bg: "#1c1c1c", ink: "#ff4438" }, alt: false,
+        ring: "EMERGENCY — TRIAGE LIVE — 18 OF 30 BAYS — AMBULANCE BAY 02 —",
+        noteA: { src: "Ward note · 18:51", text: "“Triage wait fourteen minutes — two ambulances inbound”" },
+        noteB: { src: "ARIA engine · live", text: "“Intake documents scanned — triage scores attached”" },
+      },
+      {
+        name: "Neurology", short: "Neuro&shy;logy", occ: 21, cap: 36, st: "ok",
+        head: "Dr. A. Bose", floor: "Level 3 · East Wing", duty: "Night · 7 staff",
+        color: { bg: "#1d7fa8", ink: "#eafaff" }, alt: true,
+        ring: "NEUROLOGY — STROKE PATHWAY GREEN — 21 OF 36 BEDS — STATION 05 —",
+        noteA: { src: "Ward note · 17:00", text: "“EEG slot freed at five, stroke pathway stays green”" },
+        noteB: { src: "ARIA engine · live", text: "“Overnight voice agent on — five calls scheduled”" },
+      },
+    ];
+    const N = DEPTS.length;
+    const STATUS_TXT = { ok: "Open", busy: "Busy", crit: "Critical" };
+    const ST_COLOR = { ok: "#175e43", busy: "#c88411", crit: "#d92b26" };
+
+    const ALERTS = [
+      { lvl: "high", txt: "High — Cardiology · bed 12 — voice call placed", c: "#d92b26" },
+      { lvl: "high", txt: "High — ICU · bed 4 — family escalation sent", c: "#d92b26" },
+      { lvl: "med", txt: "Med — General ward — 3 missed-dose confirmations", c: "#c88411" },
+      { lvl: "med", txt: "Med — Oncology — follow-up call answered", c: "#c88411" },
+      { lvl: "low", txt: "Low — Discharge desk — 6 care plans queued", c: "#175e43" },
+      { lvl: "low", txt: "Low — Pharmacy — scripts synced with ARIA lists", c: "#175e43" },
+    ];
+
+    /* ---------------- build discs ---------------- */
+    const discsEl = document.getElementById("discs");
+    discsEl.innerHTML = DEPTS.map((d, i) => `
+      <div class="disc${d.alt ? " alt-face" : ""}" data-i="${i}" style="--fc:${d.color.bg};--fi:${d.color.ink}" role="button" aria-label="Go to ${d.name}">
+        <div class="face">
+          <svg class="ringtext" viewBox="0 0 200 200" aria-hidden="true">
+            <defs><path id="rp${i}" d="M 100,100 m -88,0 a 88,88 0 1,1 176,0 a 88,88 0 1,1 -176,0"/></defs>
+            <text><textPath href="#rp${i}">${(d.ring + " ").repeat(3)}</textPath></text>
+          </svg>
+          <div class="face-label">${d.short}</div>
+          <div class="face-sub">${d.floor}</div>
+          <div class="face-stars">★ ★ ★</div>
+        </div>
+        <div class="hole"></div>
+      </div>`).join("");
+    const discs = [...discsEl.children];
+
+    /* ---------------- directory ---------------- */
+    const dirBtn = document.getElementById("dirBtn");
+    const directory = document.getElementById("directory");
+    const backdrop = document.getElementById("backdrop");
+    document.getElementById("dirCount").textContent = String(N).padStart(2, "0") + " WARDS";
+    document.getElementById("dirList").innerHTML = DEPTS.map((d, i) => `
+      <li data-i="${i}">
+        <span class="n">${String(i + 1).padStart(2, "0")}</span>
+        <span class="nm">${d.name}</span>
+        <span class="oc">${Math.round(d.occ / d.cap * 100)}%</span>
+        <span class="dot" style="background:${ST_COLOR[d.st]}"></span>
+      </li>`).join("");
+    const dirItems = [...directory.querySelectorAll("li")];
+    let dirOpen = false;
+    function setDir(open) {
+      dirOpen = open;
+      directory.classList.toggle("open", open);
+      backdrop.classList.toggle("open", open);
+      dirBtn.setAttribute("aria-expanded", String(open));
+    }
+    dirBtn.addEventListener("click", () => setDir(!dirOpen));
+    backdrop.addEventListener("click", () => { setDir(false); setMed(false); });
+    dirItems.forEach(li => li.addEventListener("click", () => { goTo(Number(li.dataset.i)); setDir(false); }));
+    directory.addEventListener("wheel", e => e.stopPropagation(), { passive: true });
+    directory.addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
+
+    /* ---------------- text swap ---------------- */
+    const eyebrowIdx = document.getElementById("eyebrowIdx");
+    const titleEl = document.getElementById("title");
+    const metaEl = document.getElementById("meta");
+    const noteA = document.getElementById("noteA");
+    const noteB = document.getElementById("noteB");
+    const counterEl = document.getElementById("counter");
+    const swapEls = [document.getElementById("eyebrow"), titleEl, metaEl, noteA, noteB];
+    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    function metaHTML(d) {
+      const pct = Math.round(d.occ / d.cap * 100);
+      return `
+        <div class="row"><span class="k">Head of dept</span><span class="v">${d.head}</span></div>
+        <div class="row"><span class="k">Floor · Wing</span><span class="v">${d.floor}</span></div>
+        <div class="row"><span class="k">Beds</span><span class="v">${d.occ} / ${d.cap}<span class="minibar"><i data-w="${pct}"></i></span></span></div>
+        <div class="row"><span class="k">On duty</span><span class="v">${d.duty}</span></div>
+        <div class="row"><span class="k">Status</span><span class="v st-${d.st}">${STATUS_TXT[d.st]} · ${pct}%</span></div>`;
+    }
+    function dotsHTML(d) {
+      const filled = Math.max(1, Math.round(d.occ / d.cap * 5));
+      const c = ST_COLOR[d.st];
+      let s = "";
+      for (let k = 0; k < 5; k++) s += `<span style="color:${k < filled ? c : "rgba(22,21,18,.22)"}">●</span>`;
+      return s;
+    }
+    function noteHTML(d, n) {
+      return `<div class="dots">${dotsHTML(d)}</div><figcaption class="src">${n.src}</figcaption><blockquote>${n.text}</blockquote>`;
+    }
+    function fillText(i) {
+      const d = DEPTS[i];
+      eyebrowIdx.textContent = `DEPT ${String(i + 1).padStart(2, "0")} / ${String(N).padStart(2, "0")}`;
+      titleEl.textContent = d.name;
+      metaEl.innerHTML = metaHTML(d);
+      noteA.innerHTML = noteHTML(d, d.noteA);
+      noteB.innerHTML = noteHTML(d, d.noteB);
+      requestAnimationFrame(() =>
+        metaEl.querySelectorAll(".minibar i").forEach(b => b.style.transform = `scaleX(${b.dataset.w / 100})`));
+      dirItems.forEach((li, k) => li.classList.toggle("active", k === i));
+      counterEl.textContent = `${String(i + 1).padStart(2, "0")} / ${String(N).padStart(2, "0")}`;
+    }
+
+    let active = -1, swapping = false, pendingIdx = null;
+    function swapText(i, dirUp) {
+      if (i === active) return;
+      if (swapping) { pendingIdx = i; return; }
+      swapping = true;
+      const cls = dirUp ? "leave-up" : "leave-down";
+      swapEls.forEach(el => el.classList.add(cls));
+      setTimeout(() => {
+        fillText(i);
+        swapEls.forEach(el => { el.classList.remove(cls); el.classList.add("enter-pre"); });
+        void document.body.offsetHeight; /* reflow */
+        swapEls.forEach(el => el.classList.remove("enter-pre"));
+        active = i;
+        setTimeout(() => {
+          swapping = false;
+          if (pendingIdx !== null && pendingIdx !== active) { const p = pendingIdx; pendingIdx = null; swapText(p, dirUp); }
+          else pendingIdx = null;
+        }, 240);
+      }, reduceMotion ? 0 : 210);
+    }
+
+    /* ---------------- virtual scroll engine ---------------- */
+    const stage = document.getElementById("stage");
+    let target = 0, current = 0, vel = 0, lastInput = 0;
+    let parTX = 0, parTY = 0, parX = 0, parY = 0;
+    let vw = innerWidth, vh = innerHeight;
+    const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+    function spacing() { return clamp(vw * 0.34, 280, 560); }
+    function discSize() {
+      return vw < 860 ? clamp(vw * 0.62, 240, 340) : clamp(vw * 0.39, 290, 600);
+    }
+    function applyDiscSize() { discsEl.style.setProperty("--d", discSize() + "px"); }
+    applyDiscSize();
+
+    let hinted = false;
+    function markInput() {
+      lastInput = performance.now();
+      if (!hinted) { hinted = true; setTimeout(() => document.getElementById("hint").classList.add("off"), 1400); }
+    }
+
+    addEventListener("wheel", e => {
+      if (dirOpen || medOpen) return;
+      markInput();
+      const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      target = clamp(target + d * 0.006, 0, N - 1);
+    }, { passive: true });
+
+    addEventListener("keydown", e => {
+      if (e.key === "Escape") {
+        if (medOpen && !medDetail.hidden) { closeMedDetail(); medSearch.focus({ preventScroll: true }); }
+        else { setMed(false); setDir(false); }
+        return;
+      }
+      if (dirOpen || medOpen) return;
+      const cur = Math.round(current);
+      if (["ArrowDown", "ArrowRight", "PageDown", " "].includes(e.key)) { markInput(); target = clamp(cur + 1, 0, N - 1); e.preventDefault(); }
+      else if (["ArrowUp", "ArrowLeft", "PageUp"].includes(e.key)) { markInput(); target = clamp(cur - 1, 0, N - 1); e.preventDefault(); }
+      else if (e.key === "Home") { markInput(); target = 0; }
+      else if (e.key === "End") { markInput(); target = N - 1; }
+    });
+
+    let tY0 = 0, tTarget0 = 0, touching = false, tLastY = 0, tLastT = 0, tVel = 0;
+    stage.addEventListener("touchstart", e => {
+      touching = true; tY0 = tLastY = e.touches[0].clientY; tLastT = performance.now();
+      tTarget0 = target; tVel = 0; markInput();
+    }, { passive: true });
+    stage.addEventListener("touchmove", e => {
+      if (!touching || dirOpen) return;
+      e.preventDefault();
+      const y = e.touches[0].clientY;
+      const now = performance.now();
+      tVel = (tLastY - y) / Math.max(1, now - tLastT);
+      tLastY = y; tLastT = now;
+      target = clamp(tTarget0 + (tY0 - y) * 0.005, 0, N - 1);
+    }, { passive: false });
+    stage.addEventListener("touchend", () => {
+      touching = false;
+      if (Math.abs(tVel) > 0.45) target = clamp(Math.round(target) + Math.sign(tVel), 0, N - 1);
+      else target = clamp(Math.round(target), 0, N - 1);
+    });
+
+    /* click a side disc to travel to it */
+    discs.forEach(d => d.addEventListener("click", () => {
+      const i = Number(d.dataset.i);
+      if (i !== Math.round(current)) { markInput(); goTo(i); }
+    }));
+
+    /* subtle pointer parallax */
+    addEventListener("mousemove", e => {
+      parTX = (e.clientY / vh - 0.5) * -3.2;
+      parTY = (e.clientX / vw - 0.5) * 4.4;
+    }, { passive: true });
+
+    function goTo(i) { target = clamp(i, 0, N - 1); markInput(); }
+
+    /* ---------------- render loop ---------------- */
+    let prev = 0;
+    function frame(now) {
+      if (!touching && now - lastInput > 150) target = clamp(Math.round(target), 0, N - 1);
+      const k = reduceMotion ? 1 : 0.082;
+      prev = current;
+      current += (target - current) * k;
+      if (Math.abs(target - current) < 0.0004) current = target;
+      vel = current - prev;
+
+      const sx = spacing();
+      const sy = -sx * 0.30;
+      const mob = vw < 860 ? vh * 0.075 : 0;
+      parX += (parTX - parX) * 0.06;
+      parY += (parTY - parY) * 0.06;
+      discsEl.style.transform = `rotateX(${parX.toFixed(2)}deg) rotateY(${parY.toFixed(2)}deg)`;
+
+      for (let i = 0; i < N; i++) {
+        const off = i - current;
+        const ax = Math.abs(off);
+        const el = discs[i];
+        if (ax > 2.7) { el.style.opacity = "0"; el.style.visibility = "hidden"; continue; }
+        el.style.visibility = "visible";
+        const wob = reduceMotion ? 0 : clamp(vel * 46, -9, 9);
+        const x = off * sx;
+        const y = off * sy + mob - wob * 2.2;
+        const rz = off * 10 + wob * 0.55;
+        const ry = -off * 44;
+        const rx = off * -5;
+        const s = 1 - Math.min(ax, 2) * 0.07;
+        const op = ax <= 1 ? 1 - ax * 0.12 : Math.max(0, 1 - (ax - 1) * 0.75);
+        el.style.opacity = op.toFixed(3);
+        el.style.zIndex = String(100 - Math.round(ax * 10));
+        el.style.transform =
+          `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotateZ(${rz.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) rotateX(${rx.toFixed(2)}deg) scale(${s.toFixed(3)})`;
+      }
+
+      const near = clamp(Math.round(current), 0, N - 1);
+      if (near !== active || (active === -1 && !swapping)) swapText(near, vel < 0);
+
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    addEventListener("resize", () => { vw = innerWidth; vh = innerHeight; applyDiscSize(); });
+
+    /* ---------------- clock / alerts / broadcast ---------------- */
+    const clockEl = document.getElementById("clock");
+    function tickClock() {
+      const d = new Date();
+      const t = d.toLocaleTimeString("en-GB", { hour12: false });
+      const day = d.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" }).toUpperCase();
+      clockEl.textContent = `${t} — ${day}`;
+    }
+    tickClock(); setInterval(tickClock, 1000);
+
+    const alertLine = document.getElementById("alertLine");
+    let alertIdx = 0;
+    alertLine.querySelector("i").style.background = ALERTS[0].c;
+    function cycleAlert() {
+      alertLine.classList.add("fade");
+      setTimeout(() => {
+        const a = ALERTS[alertIdx % ALERTS.length];
+        alertLine.querySelector("i").style.background = a.c;
+        alertLine.querySelector("span").textContent = a.txt;
+        alertLine.classList.remove("fade");
+        alertIdx++;
+      }, 450);
+    }
+    setTimeout(() => { cycleAlert(); setInterval(cycleAlert, 4800); }, 2600);
+
+    const broadcastBtn = document.getElementById("broadcastBtn");
+    broadcastBtn.addEventListener("click", () => {
+      const original = broadcastBtn.innerHTML;
+      broadcastBtn.innerHTML = `Broadcast queued — Twilio keys pending <em>…</em>`;
+      setTimeout(() => { broadcastBtn.innerHTML = original; }, 2600);
+    });
+
+    /* ---------------- medicine book ---------------- */
+    const medLaunch = document.getElementById("medLaunch");
+    const medBook = document.getElementById("medBook");
+    const medClose = document.getElementById("medClose");
+    const medSearch = document.getElementById("medSearch");
+    const medList = document.getElementById("medList");
+    const medDetail = document.getElementById("medDetail");
+    const medRail = document.getElementById("medRail");
+    const mbBody = document.getElementById("mbBody");
+    const mbMeta = document.getElementById("mbMeta");
+    let medOpen = false, medData = null, medIndex = null, medRows = [];
+
+    function setMed(open) {
+      medOpen = open;
+      medBook.classList.toggle("open", open);
+      medBook.setAttribute("aria-hidden", String(!open));
+      medLaunch.setAttribute("aria-expanded", String(open));
+      if (open) {
+        setDir(false);
+        backdrop.classList.toggle("open", true);
+        if (!medData) loadMedData();
+        setTimeout(() => medSearch.focus({ preventScroll: true }), 450);
+      } else {
+        backdrop.classList.remove("open");
+        closeMedDetail();
+      }
+    }
+    medLaunch.addEventListener("click", () => setMed(!medOpen));
+    medClose.addEventListener("click", () => setMed(false));
+
+    async function loadMedData() {
+      try {
+        const res = await fetch("/data/medicines.json");
+        if (!res.ok) throw new Error("fetch failed");
+        medData = await res.json();
+        medIndex = medData.entries.map(e => {
+          const m = medData.molecules[e.m];
+          return (e.n + " " + m.salt + " " + m.cat + " " + m.kind + " " + m.uses.join(" ") + " " + m.brands.join(" ")).toLowerCase();
+        });
+        const n = medData.entries.length.toLocaleString("en-IN");
+        document.getElementById("medCount").textContent = n + " MEDICINES";
+        mbMeta.textContent = n + " ENTRIES · " + medData.moleculeCount + " SALTS";
+        buildMedList("");
+      } catch (err) {
+        medList.innerHTML = '<p class="mb-empty">The medicine book could not be opened — please refresh the page.</p>';
+      }
+    }
+
+    const medDeb = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+    medSearch.addEventListener("input", medDeb(() => buildMedList(medSearch.value.trim()), 130));
+
+    function buildMedList(q) {
+      closeMedDetail();
+      const query = q.toLowerCase();
+      const hits = [];
+      for (let i = 0; i < medData.entries.length; i++) {
+        if (!query || medIndex[i].includes(query)) hits.push(i);
+      }
+      if (!hits.length) {
+        medList.innerHTML = '<p class="mb-empty">No medicine matches “' + q.replace(/[<>&]/g, "") + '”. Try a shorter word — a brand, a salt, or what it treats.</p>';
+        medRail.style.display = "none";
+        return;
+      }
+      const letters = new Set();
+      let html = "", letter = "";
+      for (const i of hits) {
+        const e = medData.entries[i], m = medData.molecules[e.m];
+        const L = e.n[0].toUpperCase();
+        if (L !== letter) { letter = L; letters.add(L); html += `<div class="mb-letter">${L}</div>`; }
+        const isCombo = m.salt.includes("+");
+        const tag = e.t === "brand" ? "BRAND" : isCombo ? "COMBO" : "SALT";
+        html += `<div class="mb-row" data-i="${i}"><span class="nm">${e.n}${e.t === "brand" ? ` <i>· ${m.salt}</i>` : ""}</span><span class="ct">${m.cat}</span><span class="tag">${tag}</span></div>`;
+      }
+      medList.innerHTML = html;
+      medRows = [...medList.querySelectorAll(".mb-row")];
+      medRows.forEach(r => r.addEventListener("click", () => openMedDetail(Number(r.dataset.i))));
+      medRail.style.display = query ? "none" : "flex";
+      medRail.innerHTML = [...letters].sort().map(L => `<button data-l="${L}">${L}</button>`).join("");
+      [...medRail.querySelectorAll("button")].forEach(b =>
+        b.addEventListener("click", () => medList.querySelector(`.mb-letter[data-l="${b.dataset.l}"]`)?.scrollIntoView({ block: "start" })));
+      [...medList.querySelectorAll(".mb-letter")].forEach(h => h.dataset.l = h.textContent);
+      medList.scrollTop = 0;
+    }
+
+    function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+    function openMedDetail(i) {
+      const e = medData.entries[i], m = medData.molecules[e.m];
+      const isCombo = m.salt.includes("+");
+      const brands = m.brands.length
+        ? `<div class="mbd-block"><span>Also sold as</span><div class="mbd-brands">${m.brands.map(b => `<button data-n="${esc(b)}">${esc(b)}</button>`).join("")}</div></div>`
+        : `<div class="mbd-block"><span>Also sold as</span><p class="mbd-none">Hospital / generic supply — several brands, same medicine.</p></div>`;
+      medDetail.innerHTML = `
+        <div class="mbd-top"><button class="mbd-back" id="mbdBack">← BACK TO LIST</button><span class="mbd-cat">${esc(m.cat)}</span></div>
+        <h3 class="mbd-name">${esc(e.n)}</h3>
+        <p class="mbd-salt">${e.t === "brand" ? `Brand of <b>${esc(m.salt)}</b>` : `<b>${esc(m.salt)}</b> — the medicine itself`}${m.kind ? ` · ${esc(m.kind)}` : ""}${isCombo ? " · fixed-dose combination" : ""}</p>
+        <div class="mbd-block"><span>In simple words</span><p class="serif">${esc(m.simple)}</p></div>
+        <div class="mbd-block"><span>Used for</span><ul>${m.uses.map(u => `<li>${esc(u)}</li>`).join("")}</ul></div>
+        <div class="mbd-block"><span>How it is taken</span><p>${esc(m.how)}</p></div>
+        <div class="mbd-block"><span>Watch out for</span><ul>${m.watch.map(w => `<li>${esc(w)}</li>`).join("")}</ul></div>
+        <div class="mbd-block mbd-alert"><span>Call the doctor if</span><p>${esc(m.alert)}</p></div>
+        ${brands}`;
+      medDetail.hidden = false;
+      medDetail.scrollTop = 0;
+      document.getElementById("mbdBack").addEventListener("click", closeMedDetail);
+      [...medDetail.querySelectorAll(".mbd-brands button")].forEach(b =>
+        b.addEventListener("click", () => {
+          const j = medData.entries.findIndex(x => x.n.toLowerCase() === b.dataset.n.toLowerCase());
+          if (j >= 0) openMedDetail(j);
+        }));
+    }
+    function closeMedDetail() { medDetail.hidden = true; medDetail.innerHTML = ""; }
+
+    /* keep the book's scroll from switching wards */
+    mbBody.addEventListener("wheel", e => e.stopPropagation(), { passive: true });
+    mbBody.addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
+    mbBody.addEventListener("keydown", e => e.stopPropagation());
+
+    /* ---------------- loader ---------------- */
+    const loadCount = document.getElementById("loadCount");
+    const loadBar = document.getElementById("loadBar");
+    const t0 = performance.now(), DUR = reduceMotion ? 50 : 1150;
+    (function loadStep(now) {
+      const p = Math.min(1, ((now || performance.now()) - t0) / DUR);
+      loadCount.textContent = String(Math.round(p * 100)).padStart(3, "0");
+      loadBar.style.transform = `scaleX(${p})`;
+      if (p < 1) requestAnimationFrame(loadStep);
+      else {
+        document.getElementById("loader").classList.add("done");
+        document.body.classList.add("ready");
+      }
+    })();
+
+    if ("ontouchstart" in window) {
+      document.getElementById("hint").firstChild.textContent = "SWIPE ↑↓ SWITCH WARDS — ";
+    }
+    fillText(0);
+  </script>
+</body>
+</html>

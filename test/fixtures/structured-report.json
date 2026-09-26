@@ -1,0 +1,15 @@
+{
+  "record": {
+    "patientName": "Devika Rao",
+    "yearsOld": 47,
+    "contactNumber": "98220 33445",
+    "diagnosisText": "Bronchial asthma with acute exacerbation",
+    "consultant": "Dr. S. Iyer",
+    "dischargedOn": "15-Mar-2026",
+    "medicationList": [
+      "Tab Montelukast 10 mg HS",
+      "Inj Budesonide 0.5 mg nebulisation BD",
+      "Tab Levocetirizine 5 mg OD"
+    ]
+  }
+}

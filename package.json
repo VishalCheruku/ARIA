@@ -1,0 +1,28 @@
+{
+  "name": "aria-ai-post-discharge-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ARIA AI-driven post-discharge monitoring and preventive care platform.",
+  "main": "server/src/index.js",
+  "scripts": {
+    "dev": "node server/src/index.js",
+    "start": "node server/src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.78",
+    "@tesseract.js-data/eng": "^1.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "mongoose": "^8.18.0",
+    "multer": "^2.0.2",
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^4.10.38",
+    "tesseract.js": "^6.0.1",
+    "twilio": "^5.8.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
