@@ -2,6 +2,7 @@
    fixture through the live API, then verify both docs exist in ATLAS. */
 const fs = require("fs");
 const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 const { MongoClient } = require(path.join(__dirname, "..", "node_modules", "mongodb"));
 
 const BASE = "http://localhost:5000";
@@ -44,7 +45,8 @@ async function api(route, options = {}) {
   });
   if (up.status !== 200) throw new Error("upload failed: " + JSON.stringify(up.body));
   const ids = up.body.ids || {};
-  const reportId = ids.reportId || ids.report || up.body.report?.id || up.body.report?._id;
+  const reportId = ids.report || ids.reportId || up.body.report?.id || up.body.report?._id;
+  const patientId = ids.patient;
   console.log("upload OK, ids:", JSON.stringify(ids), "| risk:", JSON.stringify(up.body.risk?.level || up.body.risk?.score));
   console.log("response database field:", JSON.stringify(up.body.database));
 
@@ -53,15 +55,15 @@ async function api(route, options = {}) {
   await atlas.connect();
   const db = atlas.db();
   const user = await db.collection("users").findOne({ email: EMAIL });
-  const report = await db.collection("reports").findOne({ _id: require("mongodb").ObjectId.isValid(String(reportId)) ? new (require("mongodb").ObjectId)(String(reportId)) : reportId });
-  const events = await db.collection("eventlogs").countDocuments({});
+  const report = await db.collection("reports").findOne({ _id: new (require("mongodb").ObjectId)(String(reportId)) });
+  const patient = await db.collection("patients").findOne({ _id: new (require("mongodb").ObjectId)(String(patientId)) });
   console.log("ATLAS users has test account:", Boolean(user), user ? "(" + user.email + ")" : "");
-  console.log("ATLAS reports has uploaded report:", Boolean(report), report ? "(risk " + (report.risk?.level || "?") + ")" : "");
-  console.log("ATLAS eventlogs total:", events);
+  console.log("ATLAS reports has uploaded report:", Boolean(report), report ? "(risk " + (report.risk?.level || report.riskLevel || "?") + ")" : "");
+  console.log("ATLAS patients has extracted patient:", Boolean(patient), patient ? "(" + (patient.name || "?") + ")" : "");
   await atlas.close();
 
   fs.writeFileSync(path.join(__dirname, "atlas-e2e-result.json"), JSON.stringify({
-    email: EMAIL, reportId: String(reportId), userInAtlas: Boolean(user), reportInAtlas: Boolean(report)
+    email: EMAIL, reportId: String(reportId), userInAtlas: Boolean(user), reportInAtlas: Boolean(report), patientInAtlas: Boolean(patient)
   }, null, 2));
-  process.exit(user && report ? 0 : 1);
+  process.exit(user && report && patient ? 0 : 1);
 })().catch(e => { console.error("E2E FAILED:", e.message); process.exit(1); });
