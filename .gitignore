@@ -29,6 +29,10 @@ eng.traineddata
 # Accidental nested server dir (path-bug artifact)
 server/server/
 
+# Copilot local runtimes & git-history bundle (module source IS committed)
+aria-recovery-copilot/backend/.venv/
+aria-copilot-history.bundle
+
 # OS junk
 .DS_Store
 Thumbs.db

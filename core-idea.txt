@@ -1,0 +1,78 @@
+ARIA is a healthcare-focused AI project called ARogya Intelligent Agent. From the repo README, it’s designed to help hospitals and care teams monitor patients after discharge and reduce preventable readmissions.
+
+What it does:
+
+Reads discharge summaries and prescriptions
+Extracts patient and medicine information
+Estimates risk/readmission likelihood and flags problems early
+Sends reminder alerts via SMS/calls to patients
+Tracks symptoms and adherence to medicine plans
+Gives a hospital dashboard view of patient risk and monitoring status
+The project is meant to be a post-discharge preventive care platform: instead of patients being left on their own after leaving the hospital, ARIA keeps an eye on them and nudges them toward safer recovery.
+
+It also includes:
+
+A 3D hospital/department console
+A “Medicine Book” with 2,000+ real medicines explained simply
+Demo patient profiles with risk levels (high, medium, low)
+A care-circle / family alert workflow for better monitoring
+So in short: ARIA is basically an AI-powered patient monitoring and follow-up system for healthcare, aimed at improving recovery compliance and spotting early warning signs before a patient ends up back in the hospital.
+
+Tech Stack:
+
+This project uses a fairly modern JavaScript stack, but with a custom single-page app rather than a React/Vue/Next.js framework.
+
+Core stack
+
+Node.js
+JavaScript
+Express (server-side API and static web serving)
+Frontend
+
+Plain HTML + CSS + JavaScript
+A custom interactive dashboard / hospital-style interface served from the public/ folder
+Google Fonts for the futuristic UI styling
+Canvas and DOM-driven UI effects for the “3D” / animated dashboard feel
+Backend / API
+
+Express 5
+CORS
+dotenv for environment configuration
+Multer for file upload handling
+Custom REST routes for:
+authentication
+report analysis
+dispatching SMS/voice workflows
+patient history logs
+Database
+
+MongoDB
+Mongoose for schema/model access
+AI / document processing
+
+Tesseract.js for OCR
+@tesseract.js-data/eng language data
+pdfjs-dist for PDF handling
+pdf-parse for parsing PDFs
+Custom extraction and risk-assessment logic in server/src/services
+Communication / notifications
+
+Twilio for SMS and voice/call workflows
+Auth / security
+
+Custom token-based auth using Node crypto
+scrypt-based password hashing
+HTTP-only session cookies
+Express middleware for auth checks
+Dev tooling
+
+Nodemon for local development
+Node’s built-in test runner
+Architecture pattern
+
+Server entry: server/src/index.js
+App setup: server/src/app.js
+Routes under server/src/routes
+Models under server/src/models
+Services under server/src/services
+So in one line: ARIA is a Node.js + Express + MongoDB app with a vanilla HTML/CSS/JS frontend, OCR via Tesseract, PDF extraction, Twilio messaging, and custom AI risk logic for healthcare monitoring.

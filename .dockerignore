@@ -1,0 +1,17 @@
+# Keep the platform image lean and its build cache warm
+.git
+node_modules
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.env
+**/.env.local
+aria-recovery-copilot/frontend/dist
+aria-recovery-copilot/backend/data
+aria-recovery-copilot/backend/tests
+test
+server/uploads
+*.log
+.idea
+.vscode

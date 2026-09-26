@@ -1,0 +1,65 @@
+# ARIA Recovery Copilot — Render Blueprint (spec §12 step 10, Render edition)
+#
+# One isolated web service: the Dockerfile builds the Copilot frontend and
+# serves it from the FastAPI backend, so there is a single URL and no
+# frontend/backend CORS setup. Connect this repo as a Blueprint in the Render
+# dashboard (New + > Blueprint) and fill in the `sync: false` values.
+#
+# If the main ARIA backend also runs on Render as `aria-main`, set
+# MAIN_BACKEND_URL to its internal URL (https://aria-main.onrender.com) — or
+# its private URL (http://aria-main:10000) when both services share a region.
+#
+# COPILOT_SIGNING_SECRET must hold the EXACT same value as the main ARIA
+# backend's COPILOT_SIGNING_SECRET — that is the one deliberate coupling
+# point (spec §8.5).
+
+services:
+  - type: web
+    name: aria-copilot
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    plan: starter          # pick a plan that fits; starter is fine for a pilot
+    envVars:
+      # --- GLM-5.3-flash via Z.ai ---
+      - key: ZAI_API_KEY
+        sync: false
+      - key: ZAI_BASE_URL
+        value: https://api.z.ai/api/paas/v4
+      - key: ZAI_MODEL
+        value: glm-5.3-flash
+      # --- Embeddings (re-seed the KB after changing these) ---
+      - key: EMBEDDING_PROVIDER
+        value: zai
+      - key: EMBEDDING_MODEL
+        value: embedding-3
+      - key: EMBEDDING_DIMENSIONS
+        value: "1024"
+      # --- MongoDB Atlas: same cluster is fine, database MUST be aria_copilot ---
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: aria_copilot
+      - key: ATLAS_VECTOR_INDEX
+        value: kb_vector_index
+      # --- Token coupling with the main ARIA backend (same value on both) ---
+      - key: COPILOT_SIGNING_SECRET
+        sync: false
+      - key: COPILOT_TOKEN_AUDIENCE
+        value: aria-copilot
+      # --- Main ARIA backend on Render (context-summary read + alerts write) ---
+      - key: MAIN_BACKEND_URL
+        sync: false
+      # --- Retrieval ---
+      - key: RETRIEVAL_TOP_K
+        value: "5"
+      - key: RETRIEVAL_THRESHOLD
+        value: "0.72"
+      # --- HTTP ---
+      - key: CORS_ORIGINS
+        sync: false        # e.g. https://aria-main.onrender.com (comma-separated)
+      - key: TRIAGE_STAGE2_ENABLED
+        value: "true"
+      - key: LOG_LEVEL
+        value: INFO

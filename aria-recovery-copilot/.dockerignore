@@ -1,0 +1,11 @@
+# Keep the Copilot image lean and its build cache warm
+.git
+**/.venv
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/.env
+**/.env.local
+backend/data
+frontend/dist
+docs

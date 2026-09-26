@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Orbitron:wght@600;800;900&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/home-station.css" />
+  <!-- Isolated Copilot entry point (Ask ARIA): its own styles, never shared with the dashboard -->
+  <link rel="stylesheet" href="/ask-aria.css" />
 </head>
 <body class="theme-night">
 
@@ -2620,5 +2622,23 @@
   requestAnimationFrame(loop);
   </script>
   <script src="/app.js"></script>
+  <!-- ============ Isolated "Ask ARIA" Copilot entry point (spec §6.1) ============
+       Fully self-contained: try/catch wrapped, opens the Copilot in a new tab
+       with a short-lived signed token. Its failure can never affect the
+       dashboard. DEFAULT (embedded): the Copilot runs alongside this server
+       as a child process at /copilot — nothing to configure. To point the
+       button at a separately-hosted Copilot instead, set ARIA_COPILOT_URL
+       here (e.g. "https://aria-copilot.onrender.com"). -->
+  <script>
+    window.ARIA_COPILOT_URL = window.ARIA_COPILOT_URL || "";
+  </script>
+  <button id="askAriaButton" type="button" aria-label="Open the ARIA Recovery Copilot chat in a new tab">
+    <span class="ask-aria-fab-icon" aria-hidden="true">✚</span>
+    <span class="ask-aria-fab-copy">
+      <span class="ask-aria-fab-title">Ask ARIA</span>
+      <span class="ask-aria-fab-sub">Chat about your recovery</span>
+    </span>
+  </button>
+  <script src="/ask-aria.js"></script>
 </body>
 </html>
