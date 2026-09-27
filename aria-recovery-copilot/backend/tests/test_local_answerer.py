@@ -193,7 +193,7 @@ async def test_chat_without_llm_still_defers_on_off_scope(no_llm_client):
         "message": "What is the capital of France?",
     })
     done = parse_sse(response.text)[-1][1]
-    assert done["text"] == NO_RELIABLE_MATCH_MESSAGE
+    assert done["text"].startswith(NO_RELIABLE_MATCH_MESSAGE)
     assert done["sources"] == []
 
 

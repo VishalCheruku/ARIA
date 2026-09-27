@@ -11,7 +11,7 @@ node_modules/
 server/uploads/*
 !server/uploads/.gitkeep
 
-# Logs
+# Logs — includes the npm run dev output (./server.log)
 *.log
 logs/
 
@@ -54,3 +54,4 @@ venv/
 # Copilot SPA build output — rebuilt with `npm run build:copilot`;
 # the Docker build compiles its own copy inside the image
 aria-recovery-copilot/frontend/dist/
+Aria_document.docx

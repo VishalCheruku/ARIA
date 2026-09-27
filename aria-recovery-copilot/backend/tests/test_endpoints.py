@@ -113,7 +113,7 @@ async def test_chat_no_reliable_match_defers_without_model(client, fake_llm):
     })
     events = parse_sse(response.text)
     done = events[-1][1]
-    assert done["text"] == NO_RELIABLE_MATCH_MESSAGE
+    assert done["text"].startswith(NO_RELIABLE_MATCH_MESSAGE)
     assert done["sources"] == []
     assert fake_llm.answer_prompts == []
 

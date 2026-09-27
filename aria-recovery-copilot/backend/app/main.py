@@ -123,9 +123,23 @@ async def build_state(app: FastAPI, settings: Settings, overrides: dict | None =
                 database["kb_chunks"] if database is not None else _EmptyCollection(),
                 atlas_index=settings.atlas_vector_index,
                 atlas_fallback_seconds=settings.atlas_fallback_seconds,
+                cache_ttl_seconds=settings.kb_cache_ttl_seconds,
             )
         except Exception:  # pragma: no cover
             app.state.kb = MongoKBStore(_EmptyCollection(), atlas_index=settings.atlas_vector_index)
+
+    # Warm the KB chunk cache in the background so the patient's first real
+    # question never pays the cold Atlas read (the warmup itself is
+    # best-effort and never raises).
+    from app.kb_store import MongoKBStore as _MongoKBStore
+
+    if isinstance(app.state.kb, _MongoKBStore):
+        try:
+            import asyncio
+
+            asyncio.get_running_loop().create_task(app.state.kb.warmup())
+        except RuntimeError:  # no running loop (direct build_state in tests)
+            pass
 
     # --- LLM ---
     # Optional: with no API key the answer path falls back to the local

@@ -61,6 +61,10 @@ class RetrievalResult:
     best_score: float = 0.0
     used_categories: Optional[list[str]] = None
     reliable: bool = False
+    # Below-threshold nearest chunks, kept ONLY when unreliable so the chat
+    # route can turn them into "I can help with…" topic suggestions. When
+    # reliable, `chunks` is the answer material and `near_misses` stays empty.
+    near_misses: list[ChunkResult] = field(default_factory=list)
 
 
 def infer_categories(question: str) -> Optional[list[str]]:
@@ -94,17 +98,23 @@ async def retrieve(
         # search keeps precision at scale; the unfiltered one guarantees the
         # merge is never thinner than a plain search.
         filtered, unfiltered = await _gather(
-            store.search(query_embedding, embedder.name, top_k, categories, query_text),
-            store.search(query_embedding, embedder.name, top_k, None, query_text),
+            store.search(query_embedding, embedder.name, top_k, categories, query_text,
+                         prefer_fallback=embedder_is_lexical),
+            store.search(query_embedding, embedder.name, top_k, None, query_text,
+                         prefer_fallback=embedder_is_lexical),
         )
         chunks = _merge_chunks(filtered, unfiltered)[:top_k]
     else:
-        chunks = await store.search(query_embedding, embedder.name, top_k, None, query_text)
+        chunks = await store.search(query_embedding, embedder.name, top_k, None, query_text,
+                                    prefer_fallback=embedder_is_lexical)
 
     best = max((chunk.score for chunk in chunks), default=0.0)
     reliable = bool(chunks) and best >= effective_threshold
     if not reliable:
-        return RetrievalResult(chunks=[], best_score=best, used_categories=categories, reliable=False)
+        # Keep the below-threshold neighbours: the chat route turns their
+        # categories into topic suggestions instead of a bare deferral.
+        return RetrievalResult(chunks=[], best_score=best, used_categories=categories,
+                               reliable=False, near_misses=chunks)
     return RetrievalResult(chunks=chunks, best_score=best, used_categories=categories, reliable=True)
 
 

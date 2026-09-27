@@ -44,6 +44,7 @@ from app.escalations import run_escalation
 from app.main_client import MainBackendError
 from app.retrieval import retrieve
 from app.routes.session import get_session_token
+from app.smalltalk import smalltalk_reply_for, suggestion_suffix
 
 logger = logging.getLogger("aria.copilot.chat")
 
@@ -126,6 +127,25 @@ async def chat(body: ChatRequest, request: Request) -> StreamingResponse:
             })
             return
 
+        # ---- Small talk (greetings / thanks / identity / acknowledgments) ----
+        # AFTER the safety gate, BEFORE retrieval: "hello" matches nothing in
+        # the KB, and a warm reply here costs no medical grounding because the
+        # templates carry no medical claims. Anything longer or more specific
+        # than a short full-match phrase falls through to RAG as usual.
+        smalltalk = smalltalk_reply_for(message, app_state.session_context.get(body.session_id))
+        if smalltalk:
+            assistant_message_id = await _safe_add(store, body.session_id, "assistant", smalltalk)
+            yield sse_event("meta", {"message_id": assistant_message_id, "flagged_emergency": False})
+            yield sse_event("delta", {"text": smalltalk})
+            yield sse_event("done", {
+                "message_id": assistant_message_id,
+                "text": smalltalk,
+                "flagged_emergency": False,
+                "sources": [],
+                "smalltalk": True,
+            })
+            return
+
         # ---- Retrieval (spec §8.2) ----
         try:
             history = await store.get_messages(body.session_id, limit=settings.conversation_history_messages)
@@ -147,13 +167,18 @@ async def chat(body: ChatRequest, request: Request) -> StreamingResponse:
             retrieval = None
 
         if retrieval is None or not retrieval.reliable:
-            # Spec §6.2 empty state: honest deferral instead of guessing.
-            assistant_message_id = await _safe_add(store, body.session_id, "assistant", NO_RELIABLE_MATCH_MESSAGE)
+            # Spec §6.2 empty state: honest deferral instead of guessing —
+            # upgraded with topic suggestions from the below-threshold
+            # neighbours, so the patient leaves with somewhere to go.
+            reply = NO_RELIABLE_MATCH_MESSAGE + suggestion_suffix(
+                retrieval.near_misses if retrieval is not None else []
+            )
+            assistant_message_id = await _safe_add(store, body.session_id, "assistant", reply)
             yield sse_event("meta", {"message_id": assistant_message_id, "flagged_emergency": False})
-            yield sse_event("delta", {"text": NO_RELIABLE_MATCH_MESSAGE})
+            yield sse_event("delta", {"text": reply})
             yield sse_event("done", {
                 "message_id": assistant_message_id,
-                "text": NO_RELIABLE_MATCH_MESSAGE,
+                "text": reply,
                 "flagged_emergency": False,
                 "sources": [],
             })

@@ -45,10 +45,14 @@ function setAuthMode(mode) {
   authMode = mode;
   document.querySelector("#tabLogin")?.classList.toggle("active", mode === "login");
   document.querySelector("#tabSignup")?.classList.toggle("active", mode === "signup");
-  const nameField = document.querySelector("#nameField");
-  if (nameField) nameField.hidden = mode !== "signup";
   const title = document.querySelector("#authTitle");
   if (title) title.textContent = mode === "signup" ? "Create your ARIA account." : "Sign in to ARIA.";
+  const copy = document.querySelector("#authCopy");
+  if (copy) {
+    copy.textContent = mode === "signup"
+      ? "Just an email and a password — ARIA derives your display name from it."
+      : "Your recovery signal, saved across visits. Chatting with ARIA never needs an account.";
+  }
   const hint = document.querySelector("#authHint");
   if (hint) hint.hidden = mode !== "signup";
   const submit = document.querySelector("#loginSubmit");
@@ -62,6 +66,27 @@ function saveAuth(data) {
   localStorage.setItem("aria-auth-user", JSON.stringify(data.user));
   applyAuthState();
   loadRecentReports(); /* the patient list is now scoped to this doctor */
+}
+
+/* Returning visitor: the 30-day session cookie outlives the tab. Re-validate
+   it quietly — a still-valid session keeps the signed-in state, an expired
+   one clears the stale local copy so the button reads "Login" again. */
+async function restoreSession() {
+  if (!getAuthUser()) return;
+  try {
+    const response = await fetch("/api/auth/me", { credentials: "same-origin" });
+    if (!response.ok) throw new Error("session expired");
+    const data = await response.json();
+    if (data?.user) {
+      localStorage.setItem("aria-auth-user", JSON.stringify(data.user));
+      applyAuthState();
+    }
+  } catch (_error) {
+    /* cookie no longer valid: drop the stale local copy, stay on the current view */
+    localStorage.removeItem("aria-auth-token");
+    localStorage.removeItem("aria-auth-user");
+    applyAuthState();
+  }
 }
 
 async function logout() {
@@ -97,14 +122,14 @@ function showDashboard() {
   goToStation(1);
   window.ariaStation?.popCard?.(1);   /* the dashboard opens centered */
   dashboardButton.textContent = "Home ↙";
-  loginButton.innerHTML = "Login <span>↗</span>";
+  applyAuthState(); /* keeps "Name · Logout" when signed in, "Login" when not */
   window.history.replaceState(null, "", "#dashboard");
 }
 
 function showHome() {
   goToStation(0);
   dashboardButton.innerHTML = "Dashboard <span>↗</span>";
-  loginButton.innerHTML = "Login <span>↗</span>";
+  applyAuthState();
   window.history.replaceState(null, "", window.location.pathname);
 }
 
@@ -221,17 +246,17 @@ loginButton.addEventListener("click", () => {
 document.querySelector("#tabLogin")?.addEventListener("click", () => setAuthMode("login"));
 document.querySelector("#tabSignup")?.addEventListener("click", () => setAuthMode("signup"));
 
+/* the login card's "no account needed" shortcut opens the same Ask ARIA flow */
+document.querySelector("#authAskAria")?.addEventListener("click", () => {
+  document.querySelector("#askAriaHomeButton")?.click();
+});
+
 loginForm.addEventListener("submit", async event => {
   event.preventDefault();
   authError.textContent = "";
 
-  const name = document.querySelector("#signupName")?.value.trim();
   const email = document.querySelector("#loginEmail").value.trim();
   const password = document.querySelector("#loginPassword").value;
-  if (authMode === "signup" && (!name || name.length < 2)) {
-    authError.textContent = "Enter your full name.";
-    return;
-  }
   if (!email || !email.includes("@") || !password) {
     authError.textContent = "Enter your email and password.";
     return;
@@ -240,11 +265,10 @@ loginForm.addEventListener("submit", async event => {
   setLoginBusy(true);
   try {
     const endpoint = authMode === "signup" ? "/api/auth/register" : "/api/auth/login";
-    const body = authMode === "signup" ? { name, email, password } : { email, password };
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify({ email, password })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Authentication failed.");
@@ -1032,6 +1056,7 @@ document.querySelector("#printReport")?.addEventListener("click", () => window.p
 if (window.location.hash === "#dashboard") showDashboard();
 if (window.location.hash === "#login") showLogin();
 applyAuthState();
+restoreSession();
 loadRecentReports();
 startIntro();
 loadDemoPatients();

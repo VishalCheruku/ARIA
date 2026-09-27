@@ -31,7 +31,6 @@ const express = require("express");
 const Patient = require("../models/Patient");
 const Report = require("../models/Report");
 const EventLog = require("../models/EventLog");
-const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -139,8 +138,12 @@ function isPlaceholderName(name) {
   return /^(—|-|unknown( patient)?|n\/a)$/i.test(String(name || "").trim());
 }
 
-/* ---------------- POST /api/copilot-token (spec §8.5) ---------------- */
-router.post("/copilot-token", requireAuth, rateLimit({ name: "copilot-token", windowMs: 60_000, max: 10 }), async (req, res) => {
+/* ---------------- POST /api/copilot-token (spec §8.5) ----------------
+   Login is NEVER required to talk to ARIA: anyone can open the Copilot.
+   The token only unlocks a single patient's minimal context for 5 minutes.
+   Subject resolution: explicit patient_id > dashboard patient name > most
+   recent patient > "anonymous" (generic greeting, no patient context). */
+router.post("/copilot-token", rateLimit({ name: "copilot-token", windowMs: 60_000, max: 10 }), async (req, res) => {
   try {
     if (!copilotSecret()) {
       return res.status(503).json({ error: "Copilot is not configured on this deployment." });
@@ -149,7 +152,8 @@ router.post("/copilot-token", requireAuth, rateLimit({ name: "copilot-token", wi
     /* Resolve which patient the dashboard is showing. Preference: an
        explicit patient_id from the client, else an exact name match (the
        dashboard renders the patient's name), else the most recently created
-       patient (the one whose report was just analyzed). */
+       patient (the one whose report was just analyzed). With no patient at
+       all the chat still opens, in generic (no-context) mode. */
     let patient = null;
     const { patient_id: patientId, name } = req.body || {};
     if (patientId) {
@@ -164,11 +168,8 @@ router.post("/copilot-token", requireAuth, rateLimit({ name: "copilot-token", wi
     if (!patient) {
       patient = await Patient.findOne().sort({ createdAt: -1 }).maxTimeMS(1500).catch(() => null);
     }
-    if (!patient) {
-      return res.status(404).json({ error: "No patient record is available for the Copilot." });
-    }
 
-    const session = signCopilotToken(patient._id);
+    const session = signCopilotToken(patient ? patient._id : "anonymous");
     return res.json({ token: session.token, expiresAt: session.expiresAt });
   } catch (error) {
     console.error("[copilot] /copilot-token failed:", error.message);
@@ -186,6 +187,13 @@ router.get("/patients/:id/context-summary", rateLimit({ name: "context-summary",
     const payload = requireCopilotToken(req);
     if (String(payload.sub) !== String(req.params.id)) {
       return res.status(403).json({ error: "Copilot token does not cover this patient." });
+    }
+
+    /* The anonymous subject (no patient anywhere) is valid but has no patient
+       record — answer 404 calmly instead of letting the ObjectId cast blow up
+       into a logged 503 on every generic-mode session start. */
+    if (!/^[0-9a-fA-F]{24}$/.test(String(req.params.id))) {
+      return res.status(404).json({ error: "Patient not found." });
     }
 
     const patient = await Patient.findById(req.params.id).maxTimeMS(1500);

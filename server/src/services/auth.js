@@ -2,7 +2,9 @@ const crypto = require("crypto");
 const { promisify } = require("util");
 
 const scrypt = promisify(crypto.scrypt);
-const TOKEN_TTL_SECONDS = Number(process.env.AUTH_TOKEN_TTL_SECONDS || 8 * 60 * 60);
+/* Sessions are "stay signed in" by default: 30 days, so returning users
+   (days later, new tab, same device) land straight back on their dashboard. */
+const TOKEN_TTL_SECONDS = Number(process.env.AUTH_TOKEN_TTL_SECONDS || 60 * 60 * 24 * 30);
 
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();

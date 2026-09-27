@@ -62,6 +62,8 @@ class KBStore(Protocol):
         top_k: int,
         categories: Optional[list[str]] = None,
         query_text: str = "",
+        *,
+        prefer_fallback: bool = False,
     ) -> list[ChunkResult]: ...
 
     async def count(self) -> int: ...
@@ -169,14 +171,28 @@ class MongoKBStore:
     with a TTL cache (retries Atlas after `atlas_fallback_seconds`).
     """
 
-    def __init__(self, collection, atlas_index: str, atlas_fallback_seconds: float = 300.0) -> None:
+    def __init__(self, collection, atlas_index: str, atlas_fallback_seconds: float = 300.0,
+                 cache_ttl_seconds: float = 3600.0) -> None:
         self._collection = collection
         self._index = atlas_index
         self._atlas_disabled_until: float = 0.0
         self._fallback_seconds = atlas_fallback_seconds
         self._all_chunks_cache: tuple[float, list[dict]] | None = None
-        self._cache_ttl = 60.0
+        # The KB is essentially static (re-seeded rarely), so the in-process
+        # chunk cache can live far longer than one conversation: with the old
+        # 60s TTL, the FIRST retrieval after every idle minute re-pulled all
+        # chunks over a slow Atlas link — a 25-30s answer for the patient.
+        self._cache_ttl = cache_ttl_seconds
         self._bm25_cache: tuple[float, BM25Scorer] | None = None
+
+    async def warmup(self) -> None:
+        """Pre-load the chunk cache so the first real question never pays the
+        cold Atlas read. Best-effort: failures are fine (the first search
+        retries lazily)."""
+        try:
+            await self._load_all()
+        except Exception:  # pragma: no cover — warmup is opportunistic
+            pass
 
     async def count(self) -> int:
         try:
@@ -191,8 +207,14 @@ class MongoKBStore:
         top_k: int,
         categories: Optional[list[str]] = None,
         query_text: str = "",
+        *,
+        prefer_fallback: bool = False,
     ) -> list[ChunkResult]:
-        if time.monotonic() < self._atlas_disabled_until:
+        # The lexical dev embedder produces hash vectors with no geometric
+        # meaning — an Atlas $vectorSearch over them is meaningless even when
+        # the index exists, and its ~3s latency per first query is pure waste.
+        # Go straight to the in-process BM25 scan in that case.
+        if prefer_fallback or time.monotonic() < self._atlas_disabled_until:
             return await self._fallback_search(query_embedding, query_model, top_k, categories, query_text)
         try:
             results = await self._atlas_search(query_embedding, query_model, top_k, categories)
@@ -387,6 +409,8 @@ class InMemoryKBStore:
         top_k: int,
         categories: Optional[list[str]] = None,
         query_text: str = "",
+        *,
+        prefer_fallback: bool = False,
     ) -> list[ChunkResult]:
         if self._scoring == "bm25":
             return self._search_bm25(query_text, top_k, categories)

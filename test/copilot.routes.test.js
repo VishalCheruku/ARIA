@@ -6,7 +6,12 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const crypto = require("node:crypto");
+const mongoose = require("mongoose");
 const { createApp } = require("../server/src/app");
+
+/* No MongoDB in these tests: without this, patient lookups buffer for the
+   default 10s before failing; 250ms keeps the degrade paths fast. */
+mongoose.set("bufferTimeoutMS", 250);
 
 
 function listen(app) {
@@ -44,13 +49,20 @@ function signToken(payload, secret) {
 
 const SECRET = "test-copilot-signing-secret-0123456789abcdef";
 
-test("copilot token endpoint requires dashboard auth", async () => {
+test("copilot token endpoint is open — login is never required to chat", async () => {
   const previous = process.env.COPILOT_SIGNING_SECRET;
   process.env.COPILOT_SIGNING_SECRET = SECRET;
   const server = await listen(createApp());
   try {
-    const { response } = await request(server, "/api/copilot-token", { method: "POST", body: "{}" });
-    assert.equal(response.status, 401);
+    /* Without MongoDB the patient lookup degrades to null, so the minted
+       token carries the "anonymous" subject: the chat opens in generic
+       (no patient context) mode instead of refusing signed-out visitors. */
+    const { response, body } = await request(server, "/api/copilot-token", { method: "POST", body: "{}" });
+    assert.equal(response.status, 200);
+    assert.match(String(body.token || ""), /^[^.]+\.[^.]+\.[^.]+$/);
+
+    const [, payload] = String(body.token).split(".");
+    assert.equal(JSON.parse(Buffer.from(payload, "base64url").toString("utf8")).sub, "anonymous");
   } finally {
     server.close();
     process.env.COPILOT_SIGNING_SECRET = previous;

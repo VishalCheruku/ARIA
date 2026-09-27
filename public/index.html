@@ -14,11 +14,11 @@
   <noscript>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Orbitron:wght@600;800;900&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet" />
   </noscript>
-  <link rel="stylesheet" href="/home-station.css" />
+  <link rel="stylesheet" href="/home-station.css?v=3" />
   <!-- Isolated Copilot entry point (Ask ARIA): its own styles, never shared with the dashboard -->
-  <link rel="stylesheet" href="/ask-aria.css" />
+  <link rel="stylesheet" href="/ask-aria.css?v=9" />
   <!-- Mobile-responsive layer: breakpoints + 2D fallback UI (loads last, overrides desktop) -->
-  <link rel="stylesheet" href="/mobile-responsive.css" />
+  <link rel="stylesheet" href="/mobile-responsive.css?v=2" />
 </head>
 <body class="theme-night">
 
@@ -361,18 +361,14 @@
         <form class="login-form" id="loginForm" novalidate>
           <p class="eyebrow">Secure access</p>
           <h1 id="authTitle">Sign in to ARIA.</h1>
-          <p class="login-copy" id="authCopy">Clinical accounts unlock archived reports and protected workflows.</p>
+          <p class="login-copy" id="authCopy">Your recovery signal, saved across visits. Chatting with ARIA never needs an account.</p>
           <div class="auth-tabs">
             <button type="button" class="auth-tab active" id="tabLogin">Login</button>
             <button type="button" class="auth-tab" id="tabSignup">Sign up</button>
           </div>
-          <label id="nameField" hidden>
-            <span>Full name</span>
-            <input id="signupName" name="name" type="text" autocomplete="name" placeholder="Dr. Kavitha Menon" />
-          </label>
           <label>
             <span>Email</span>
-            <input id="loginEmail" name="email" type="email" autocomplete="email" placeholder="clinician@hospital.org" required />
+            <input id="loginEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
           </label>
           <label>
             <span>Password</span>
@@ -381,6 +377,8 @@
           <p class="auth-hint" id="authHint" hidden>At least 8 characters, with one letter and one number.</p>
           <div class="auth-error" id="authError" role="alert" aria-live="polite"></div>
           <button class="primary login-submit" id="loginSubmit" type="submit">Login <span>→</span></button>
+          <p class="auth-stay">You stay signed in on this device — come back anytime.</p>
+          <button type="button" class="auth-no-account" id="authAskAria">✦ Just here to chat? <b>Ask ARIA</b> — no login needed</button>
         </form>
       </div>
     </section>
@@ -2692,10 +2690,10 @@
   } catch (_e) {}
   requestAnimationFrame(loop);
   </script>
-  <script src="/app.js"></script>
+  <script src="/app.js?v=2"></script>
   <!-- Mobile layer: device detection, bottom nav/drawer, swipe, accordion.
        Must load after app.js (uses ariaStation + auth state). -->
-  <script src="/js/mobile.js" defer></script>
+  <script src="/js/mobile.js?v=2" defer></script>
   <!-- ============ Isolated "Ask ARIA" Copilot entry point (spec §6.1) ============
        Fully self-contained: try/catch wrapped, opens the Copilot in a new tab
        with a short-lived signed token. Its failure can never affect the
@@ -2708,6 +2706,6 @@
   </script>
   <!-- Ask ARIA lives in the top navigation (✦ Ask ARIA), shared by 3D and 2D
        modes. Wired by ask-aria.js; its failure can never affect the dashboard. -->
-  <script src="/ask-aria.js"></script>
+  <script src="/ask-aria.js?v=5"></script>
 </body>
 </html>

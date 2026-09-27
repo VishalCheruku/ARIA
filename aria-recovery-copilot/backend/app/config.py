@@ -99,6 +99,10 @@ class Settings:
     # --- Retrieval (spec §8.2) ---
     retrieval_top_k: int = field(default_factory=lambda: _env_int("RETRIEVAL_TOP_K", 5))
     retrieval_threshold: float = field(default_factory=lambda: _env_float("RETRIEVAL_THRESHOLD", 0.72))
+    # How long the in-process copy of the (static) KB chunks stays fresh —
+    # a cold reload over a slow Atlas link otherwise lands on the patient as
+    # a very slow first answer.
+    kb_cache_ttl_seconds: float = field(default_factory=lambda: _env_float("KB_CACHE_TTL_SECONDS", 3600.0))
 
     # --- HTTP surface ---
     cors_origins: list[str] = field(

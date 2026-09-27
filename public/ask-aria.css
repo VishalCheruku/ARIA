@@ -1,16 +1,673 @@
 /*
-  "Ask ARIA" top-nav button styles — isolated Copilot entry point.
-  Scoped to the .ask-aria-action button only; deliberately a different accent
-  (calm teal) from the dashboard (spec §6.3) so it reads as its own surface.
+  "Ask ARIA" top-nav button — isolated Copilot entry point.
+  Design: Uiverse.io by Navarog21, adapted for ARIA (ridge border, 1s ease,
+  inset glow on hover). No fill at rest — the button sits straight on the
+  topbar; on hover it slowly (1s) fills with the INTAKE gate pink-red
+  (#ed2f34, the station accent in the 3D world) like a gate lighting up.
+  Text ink follows the topbar theme (--chrome-ink) so the transparent rest
+  state stays readable in both night and day themes.
   The button works in both 3D and 2D modes because the topbar is shared.
 */
 button.ask-aria-action {
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.18), rgba(15, 118, 110, 0.28));
-  border: 1px solid rgba(13, 148, 136, 0.55);
-  color: #5eead4;
+  position: relative;
+  width: 10em;
+  height: 3.5em;
+  padding: 0;
+  border: 3px ridge #149CEA;
+  outline: none;
+  background-color: transparent;
+  color: var(--chrome-ink, #eef2ff);
+  transition: 1s;
+  border-radius: 0.3em;
+  font-size: 16px;
+  font-weight: bold;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 button.ask-aria-action:hover {
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.3), rgba(15, 118, 110, 0.45));
-  color: #99f6e4;
+  border: 3px ridge #ff5c66; /* ridge border warms up with the gate */
+  background-color: #ed2f34; /* fades in slowly via the 1s transition */
+  color: #ffffff;
+  box-shadow:
+    inset 0px 0px 25px rgba(122, 8, 20, 0.55),
+    0 0 18px rgba(237, 47, 52, 0.35);
+}
+
+button.ask-aria-action:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+button.ask-aria-action span {
+  color: #7cc4ff;
+}
+
+/* the arrow keeps its contrast on the light day topbar */
+body.theme-day button.ask-aria-action span {
+  color: #0d6da8;
+}
+
+button.ask-aria-action:hover span {
+  color: #ffd9da;
+}
+
+/* ============================================================================
+   "Ask ARIA" — full-screen cinematic experience
+   (vanilla twins of the Aceternity SparklesPreview / SparklesCore /
+   TextHoverEffect / 3d-card, driven by ask-aria.js)
+
+   Layer order inside .aae-root:
+     1 .aae-stars        full-page sparse sparkles (density ~100)
+     2 .aae-wordmark     SVG "ARIA" gradient stroke revealed around the pointer
+     3 .aae-card-layer   the chat card — rises from the bottom rotating once,
+                         then 3-D tilts with the pointer (perspective 1000px)
+     4 .aae-splash       black intro ("Ask ARIA" + dense sparkle band), fades
+                         away slowly and is then removed from the DOM
+   ========================================================================== */
+
+.aae-root,
+.aae-root *,
+.aae-root *::before,
+.aae-root *::after {
+  box-sizing: border-box;
+}
+
+.aae-root {
+  position: fixed;
+  inset: 0;
+  z-index: 99990;
+  background: #000;
+  overflow: hidden;
+  color: #f4f7ff;
+  font-family: "Space Grotesk", "DM Sans", system-ui, sans-serif;
+  transition: opacity 0.45s ease;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.aae-root.aae-closing {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* the dashboard must not scroll behind the overlay */
+html.aae-lock,
+body.aae-lock {
+  overflow: hidden !important;
+}
+
+/* the global red :focus-visible ring (mobile-responsive.css) becomes the
+   experience's own indigo ring inside the overlay */
+.aae-root :focus-visible {
+  outline: 2px solid rgba(129, 140, 248, 0.85);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ---- SparklesCore twin ---------------------------------------------------- */
+
+.aae-sparkle-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+/* ---- layer 1: persistent starfield ---------------------------------------- */
+
+.aae-stars {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* ---- layer 2: the ARIA wordmark (TextHoverEffect twin) -------------------- */
+
+.aae-wordmark {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  /* lifted above centre so the glow peeks over the chat card */
+  padding-bottom: 32vh;
+  pointer-events: none;
+}
+
+.aae-wordmark-box {
+  width: min(94vw, 88rem);
+  aspect-ratio: 3 / 1;
+  pointer-events: auto;
+}
+
+.aae-wordmark-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.aae-word-dim {
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+.aae-wordmark-svg.aae-word-on .aae-word-dim {
+  opacity: 0.3;
+}
+
+/* ---- layer 3: the chat card ------------------------------------------------ */
+
+.aae-card-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.aae-card-enter {
+  opacity: 0;
+}
+
+/* rises from below the viewport to the middle while rotating exactly once */
+.aae-card-enter.aae-run {
+  animation: aae-card-rise 1.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes aae-card-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 112vh, 0) rotate(0deg);
+  }
+  5% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(360deg);
+  }
+}
+
+.aae-card-scene {
+  pointer-events: auto;
+  padding: 2.5rem;
+  perspective: 1000px;
+}
+
+.aae-card-tilt {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* CardBody dark variant: bg-black, border-white/[0.2], rounded-xl, p-6-ish */
+.aae-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(44rem, calc(100vw - 24px));
+  max-height: min(82vh, 720px);
+  max-height: min(82dvh, 720px);
+  padding: 24px 24px 16px;
+  background: #05060a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  transform-style: preserve-3d;
+  box-shadow: 0 24px 70px -24px rgba(0, 0, 0, 0.85);
+}
+
+/* dark:hover:shadow-emerald-500/[0.1] */
+.aae-card-scene:hover .aae-card {
+  box-shadow:
+    0 25px 60px -12px rgba(16, 185, 129, 0.12),
+    0 30px 80px -24px rgba(0, 0, 0, 0.9);
+}
+
+.aae-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  transform: translateZ(50px); /* CardItem translateZ="50" */
+}
+
+.aae-card-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #ffffff;
+}
+
+.aae-card-sub {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: rgba(226, 232, 240, 0.52);
+}
+
+.aae-close {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transform: translateZ(60px);
+  transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+.aae-close:hover {
+  background: #ed2f34;
+  border-color: #ed2f34;
+  color: #ffffff;
+}
+
+/* red escalation banner (spec §6.2) — hidden until the backend flags one */
+.aae-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(237, 47, 52, 0.55);
+  border-radius: 12px;
+  background: rgba(237, 47, 52, 0.16);
+  color: #ffd9da;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  transform: translateZ(30px);
+}
+
+.aae-banner[hidden] {
+  display: none;
+}
+
+.aae-banner-call {
+  flex: none;
+  margin-left: auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: none;
+  animation: aae-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes aae-pulse {
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+.aae-messages {
+  flex: 1 1 auto;
+  min-height: 300px;
+  margin-top: 14px;
+  padding: 4px 6px 4px 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.aae-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.aae-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+}
+
+.aae-msg {
+  display: flex;
+}
+
+.aae-msg-aria {
+  justify-content: flex-start;
+}
+
+.aae-msg-user {
+  justify-content: flex-end;
+}
+
+.aae-bubble {
+  max-width: 86%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.aae-msg-aria .aae-bubble {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e8ecf5;
+  border-top-left-radius: 4px;
+}
+
+.aae-msg-user .aae-bubble {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #ffffff;
+  border-top-right-radius: 4px;
+  box-shadow: 0 6px 18px -8px rgba(99, 102, 241, 0.55);
+}
+
+.aae-bubble-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  border-color: rgba(237, 47, 52, 0.5) !important;
+  background: rgba(237, 47, 52, 0.12) !important;
+  color: #ffd9da !important;
+}
+
+.aae-retry {
+  border: 0;
+  border-radius: 10px;
+  padding: 7px 14px;
+  background: #ffffff;
+  color: #0b0c10;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.aae-retry:hover {
+  background: #c7d2fe;
+}
+
+.aae-sources {
+  max-width: 86%;
+  font-size: 10.5px;
+  line-height: 1.9;
+  color: rgba(226, 232, 240, 0.45);
+}
+
+.aae-source-chip {
+  display: inline-block;
+  margin: 0 2px;
+  padding: 2px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.aae-bubble-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 14px;
+}
+
+.aae-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(232, 236, 245, 0.75);
+  animation: aae-bounce 1.2s ease-in-out infinite;
+}
+
+.aae-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.aae-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes aae-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+/* the demo's button slot, rebuilt as a normal centered chat typing area */
+.aae-composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  transform: translateZ(20px); /* CardItem translateZ={20} */
+}
+
+.aae-input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #f4f7ff;
+  font-family: inherit;
+  font-size: 16px; /* ≥16px so iOS never zooms on focus */
+  line-height: 1.4;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.aae-input:focus {
+  border-color: rgba(129, 140, 248, 0.8);
+  background: rgba(99, 102, 241, 0.08);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16);
+}
+
+.aae-input::placeholder {
+  color: rgba(226, 232, 240, 0.38);
+}
+
+.aae-input:disabled {
+  opacity: 0.55;
+}
+
+.aae-send {
+  flex: none;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 12px;
+  background: #ffffff; /* dark:bg-white dark:text-black */
+  color: #05060a;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.aae-send:hover {
+  background: #c7d2fe;
+}
+
+.aae-send:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.aae-fineprint {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: rgba(226, 232, 240, 0.34);
+}
+
+/* ---- layer 4: the intro splash (SparklesPreview twin) ---------------------- */
+
+.aae-splash {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #000;
+  cursor: pointer;
+  transition: opacity 1.15s ease; /* "the page vanishes out slowly" */
+}
+
+.aae-splash-out .aae-splash {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.aae-splash-title {
+  position: relative;
+  z-index: 20;
+  margin: 0 0 22px;
+  text-align: center;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: clamp(2.75rem, 8vw, 8rem); /* text-3xl → text-9xl */
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+}
+
+.aae-splash-band {
+  position: relative;
+  flex: none;
+  width: min(40rem, 92vw); /* w-[40rem] */
+  height: 10rem;           /* h-40 */
+}
+
+.aae-splash-band .ln {
+  position: absolute;
+  top: 0;
+  pointer-events: none;
+}
+
+.aae-splash-band .ln-indigo-b {
+  left: 5rem;    /* inset-x-20, w-3/4 */
+  width: 75%;
+  height: 2px;
+  background: linear-gradient(to right, transparent, #6366f1, transparent);
+  filter: blur(4px);
+}
+
+.aae-splash-band .ln-indigo {
+  left: 5rem;
+  width: 75%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #6366f1, transparent);
+}
+
+.aae-splash-band .ln-sky-b {
+  left: 15rem;   /* inset-x-60, w-1/4 */
+  width: 25%;
+  height: 5px;
+  background: linear-gradient(to right, transparent, #0ea5e9, transparent);
+  filter: blur(4px);
+}
+
+.aae-splash-band .ln-sky {
+  left: 15rem;
+  width: 25%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #0ea5e9, transparent);
+}
+
+/* radial mask that melts the sparkle band into the black stage */
+.aae-splash-veil {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(350px 200px at top, transparent 20%, #fff);
+  mask-image: radial-gradient(350px 200px at top, transparent 20%, #fff);
+}
+
+/* ---- small screens ---------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .aae-wordmark {
+    padding-bottom: 40vh;
+  }
+
+  .aae-wordmark-box {
+    width: 92vw;
+  }
+
+  .aae-card-scene {
+    padding: 10px;
+  }
+
+  .aae-card {
+    max-height: min(84dvh, 600px);
+    padding: 16px 14px 12px;
+  }
+
+  .aae-messages {
+    min-height: 160px;
+  }
+
+  .aae-splash-band .ln-indigo-b,
+  .aae-splash-band .ln-indigo {
+    left: 3rem;
+  }
+
+  .aae-splash-band .ln-sky-b,
+  .aae-splash-band .ln-sky {
+    left: 9rem;
+  }
+}
+
+/* ---- reduced motion ---------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .aae-card-enter.aae-run {
+    animation-name: aae-card-rise-soft;
+    animation-duration: 0.9s;
+    animation-timing-function: ease-out;
+  }
+
+  @keyframes aae-card-rise-soft {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 40vh, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .aae-splash {
+    transition-duration: 0.4s;
+  }
+
+  .aae-banner-call {
+    animation: none;
+  }
 }

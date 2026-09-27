@@ -22,6 +22,7 @@
 const { spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
+const net = require("net");
 const path = require("path");
 
 /* Local dev: the copilot repo lives next to server/. Container builds set
@@ -84,6 +85,32 @@ function probeHealth(timeoutMs = 1500) {
   });
 }
 
+/* Raw TCP check: is the port OCCUPIED, regardless of what is serving it?
+   Distinguishes "nothing there, safe to spawn" from "something squatting on
+   the port (usually a stale ARIA dev server / orphaned uvicorn) — spawning
+   would just die with errno 10048 in a restart loop". */
+function probeTcp(port, timeoutMs = 1200) {
+  return new Promise(resolve => {
+    const socket = new net.Socket();
+    let settled = false;
+    const done = result => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(result);
+    };
+    socket.setTimeout(timeoutMs);
+    socket.once("connect", () => done(true));
+    socket.once("timeout", () => done(false));
+    socket.once("error", () => done(false));
+    socket.connect(port, "127.0.0.1");
+  });
+}
+
+const STALE_PORT_HINT =
+  `Kill the stale process (netstat -ano | findstr :${"{port}"} → taskkill /PID <pid> /F) ` +
+  `or set COPILOT_PORT to a free port. The main app is unaffected.`;
+
 async function waitForReadiness() {
   const deadline = Date.now() + READINESS_TIMEOUT_MS;
   while (Date.now() < deadline) {
@@ -113,6 +140,17 @@ async function start() {
   if (await probeHealth()) {
     state.status = "up";
     log(`already running on port ${state.port} — adopted`);
+    return;
+  }
+
+  /* Port occupied by something that is NOT a healthy Copilot: spawning a
+     child is a guaranteed bind failure (errno 10048) followed by a pointless
+     restart loop. Name the real problem instead. */
+  if (await probeTcp(state.port)) {
+    state.status = "down";
+    log(`port ${state.port} is occupied by a process that is not a healthy ` +
+        `Copilot — usually a stale ARIA dev server or orphaned uvicorn. ` +
+        STALE_PORT_HINT.replace("{port}", String(state.port)));
     return;
   }
 
@@ -155,8 +193,26 @@ function spawnChild(python) {
     if (state.restarts < MAX_RESTARTS) {
       state.restarts += 1;
       log(`restarting in ${RESTART_DELAY_MS}ms (attempt ${state.restarts}/${MAX_RESTARTS})`);
-      setTimeout(() => {
-        if (!state.stopping) spawnChild(findPython() || python);
+      setTimeout(async () => {
+        if (state.stopping) return;
+        /* The usual cause of an immediate exit is a port clash. If a healthy
+           Copilot appeared on the port, adopt it; if something unhealthy is
+           squatting on it, stop the loop and say so instead of burning all
+           five attempts on errno 10048. */
+        if (await probeHealth()) {
+          state.status = "up";
+          state.startedAt = new Date().toISOString();
+          log(`port ${state.port} is already served by a healthy Copilot — adopted it`);
+          return;
+        }
+        if (await probeTcp(state.port)) {
+          state.status = "down";
+          log(`port ${state.port} is occupied by a process that is not a healthy ` +
+              `Copilot — stopping the restart loop. ` +
+              STALE_PORT_HINT.replace("{port}", String(state.port)));
+          return;
+        }
+        spawnChild(findPython() || python);
       }, RESTART_DELAY_MS);
     } else {
       log("gave up restarting — Copilot stays down; the main app is unaffected");

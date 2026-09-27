@@ -28,10 +28,10 @@ router.post("/auth/register", async (req, res) => {
     if (existingUser) return res.status(409).json({ error: "An account already exists for this email." });
 
     const user = await User.create({
-      name: req.body.name.trim(),
+      name: displayNameFor(req.body.name, email),
       email,
       passwordHash: await hashPassword(req.body.password),
-      role: req.body.role || "care_coordinator"
+      role: req.body.role || "member"
     });
     const session = signToken(user);
     setSessionCookie(res, session.token, session.expiresAt);
@@ -87,13 +87,26 @@ router.post("/auth/logout", (_req, res) => {
   res.json({ ok: true });
 });
 
+/* Sign-up collects ONLY email + password. A display name is derived from the
+   email (still stored, still required by the schema) and self-signups get the
+   non-clinical "member" role; name/role stay settable for admin-created accounts. */
+function displayNameFor(rawName, email) {
+  const provided = String(rawName || "").trim();
+  if (provided.length >= 2) return provided;
+  const words = String(email).split("@")[0]
+    .split(/[^a-zA-Z]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+  return words.length ? words.join(" ").slice(0, 120) : "ARIA Member";
+}
+
 function validateRegistration(body = {}) {
   const name = String(body.name || "").trim();
   const email = normalizeEmail(body.email);
   const passwordError = validatePassword(body.password);
-  const allowedRoles = new Set(["admin", "clinician", "care_coordinator"]);
+  const allowedRoles = new Set(["admin", "clinician", "care_coordinator", "member"]);
 
-  if (name.length < 2) return "Name must be at least 2 characters.";
+  if (name && name.length < 2) return "Name must be at least 2 characters.";
   if (!validateEmail(email)) return "Enter a valid email address.";
   if (passwordError) return passwordError;
   if (body.role && !allowedRoles.has(body.role)) return "Role is not supported.";
