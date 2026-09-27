@@ -130,12 +130,33 @@ function showFile(file) {
     dropzone.classList.remove("report-loaded");
     dropTitle.textContent = "Drop a discharge document here";
     fileName.textContent = "PDF, scanned PDF, image, TXT or JSON";
+    clearDropThumb();
     return;
   }
   intakePanel?.classList.add("has-report-loaded");
   dropzone.classList.add("report-loaded");
   dropTitle.textContent = `${file.name} loaded`;
   fileName.textContent = "Tap to choose a different document";
+  showDropThumb(file);
+}
+
+/* ---------- image preview: instant visual confirmation before analyzing ---------- */
+let thumbUrl = null;
+function clearDropThumb() {
+  dropzone?.querySelector(".drop-thumb")?.remove();
+  if (thumbUrl) { URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
+}
+function showDropThumb(file) {
+  clearDropThumb();
+  if (!file || !dropzone || !String(file.type || "").startsWith("image/")) return;
+  thumbUrl = URL.createObjectURL(file);
+  const img = document.createElement("img");
+  img.className = "drop-thumb";
+  img.alt = "Preview of the selected document image";
+  img.decoding = "async";
+  img.loading = "lazy";
+  img.src = thumbUrl;
+  dropzone.insertBefore(img, dropzone.querySelector(".drop-copy"));
 }
 
 input.addEventListener("change", () => showFile(input.files[0]));
@@ -249,7 +270,93 @@ analyzeButton.addEventListener("click", async () => {
   await analyze(formData);
 });
 
-async function analyze(formData) {
+/* ---------- upload with real progress + retry ----------
+   fetch() cannot report upload progress, so the analyze POST uses XHR.
+   The bar covers the transfer (0→90%); the last 10% stands for the server's
+   OCR/risk pipeline, which streams no progress of its own. */
+const MAX_UPLOAD_BYTES = 15 * 1024 * 1024; /* must match MAX_FILE_BYTES in reportRoutes.js */
+let lastUploadForm = null;
+let lastUploadFile = null;
+
+const upBox = document.querySelector("#uploadProgress");
+const upFill = document.querySelector("#upBarFill");
+const upPct = document.querySelector("#upPercent");
+const upSize = document.querySelector("#upSize");
+const upEta = document.querySelector("#upEta");
+const upRetryBtn = document.querySelector("#upRetry");
+const upName = document.querySelector("#upFileName");
+
+function resetProgressUI() {
+  if (!upBox) return;
+  upBox.hidden = true;
+  upRetryBtn.hidden = true;
+  if (upFill) upFill.style.width = "0%";
+}
+
+function mb(bytes) { return (bytes / (1024 * 1024)).toFixed(1); }
+
+function showUploadProgress(file) {
+  if (!upBox || !file || file.size < 300 * 1024) return false; /* small/demo files: skip */
+  upBox.hidden = false;
+  upRetryBtn.hidden = true;
+  upName.textContent = file.name;
+  upEta.textContent = "estimating…";
+  if (upSize) upSize.textContent = `0.0 / ${mb(file.size)} MB`;
+  if (upFill) upFill.style.width = "0%";
+  if (upPct) upPct.textContent = "0%";
+  return true;
+}
+
+function progressTick(loaded, total, startedAt, uploadPhase) {
+  if (!upFill) return;
+  const frac = total ? loaded / total : 0;
+  const capped = uploadPhase ? frac * 0.9 : 0.9 + frac * 0.1;
+  upFill.style.width = `${(capped * 100).toFixed(1)}%`;
+  if (upPct) upPct.textContent = `${Math.round(capped * 100)}%`;
+  if (upSize && total) upSize.textContent = `${mb(loaded)} / ${mb(total)} MB`;
+  if (upEta) {
+    if (!uploadPhase) { upEta.textContent = "ARIA is reading the document…"; return; }
+    const elapsed = (Date.now() - startedAt) / 1000;
+    const speed = elapsed > 0.2 ? loaded / elapsed : 0;
+    upEta.textContent = speed > 0 ? `~${Math.max(1, Math.ceil((total - loaded) / speed))}s left` : "estimating…";
+  }
+}
+
+function postWithProgress(url, formData, hasProgressUI) {
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.responseType = "json";
+    xhr.timeout = 180000; /* OCR of big scans is slow server-side; 3 min cap */
+    if (xhr.upload && hasProgressUI) {
+      xhr.upload.addEventListener("progress", event => {
+        if (event.lengthComputable) progressTick(event.loaded, event.total, startedAt, true);
+      });
+      xhr.upload.addEventListener("load", () => progressTick(1, 1, startedAt, false));
+    }
+    xhr.addEventListener("load", () => {
+      resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, data: xhr.response || {} });
+    });
+    xhr.addEventListener("error", () => reject(new Error("Network error while uploading")));
+    xhr.addEventListener("timeout", () => reject(new Error("Upload timed out — check the connection and retry")));
+    xhr.addEventListener("abort", () => reject(new Error("Upload cancelled")));
+    xhr.send(formData);
+  });
+}
+
+upRetryBtn?.addEventListener("click", async () => {
+  upRetryBtn.hidden = true;
+  if (lastUploadForm) await analyze(lastUploadForm, { isRetry: true });
+});
+
+async function analyze(formData, options = {}) {
+  const file = formData.get("document");
+  if (file && file.size > MAX_UPLOAD_BYTES) {
+    fileName.textContent = `File is ${mb(file.size)} MB — the limit is 15 MB`;
+    return;
+  }
+  lastUploadForm = options.isRetry ? lastUploadForm : formData;
   setBusy(true);
   window.ariaScene?.reportLoaded?.();
   setText("patientName", "Reading clinical signal…");
@@ -262,20 +369,23 @@ async function analyze(formData) {
     { at: new Date().toISOString(), label: "OCR pipeline initialized" }
   ]);
   revealDashboard();
+  const showProgress = !options.isRetry && showUploadProgress(file);
 
   try {
-    const response = await fetch("/api/reports/analyze", {
-      method: "POST",
-      body: formData
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Analysis failed");
-    renderReport(data);
+    const result = await postWithProgress("/api/reports/analyze", formData, showProgress);
+    if (!result.ok) throw new Error(result.data.error || "Analysis failed");
+    renderReport(result.data);
+    resetProgressUI();
   } catch (error) {
     setText("dashboardSub", error.message);
     setText("decisionHeadline", "Analysis could not complete.");
     setText("decisionText", "Check the document format and server logs, then try again.");
     renderTimeline([{ at: new Date().toISOString(), label: error.message }]);
+    if (upBox && showProgress) {
+      upBox.hidden = false;
+      upRetryBtn.hidden = false;   /* draft stays chosen — one tap re-sends it */
+      if (upEta) upEta.textContent = "upload failed";
+    }
   } finally {
     setBusy(false);
   }
@@ -927,3 +1037,13 @@ startIntro();
 loadDemoPatients();
 updateAddAnother();
 renderCalendarSurfaces();
+
+/* ---------- service worker (offline shell + API cache) ----------
+   Registered on every platform; service-worker.js is conservative:
+   network-first navigations, cache-first statics, never touches POSTs
+   or the /copilot stream. */
+if ("serviceWorker" in navigator && (location.protocol === "https:" || ["localhost", "127.0.0.1"].includes(location.hostname))) {
+  addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {/* offline support is optional */});
+  });
+}

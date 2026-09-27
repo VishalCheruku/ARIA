@@ -7,7 +7,11 @@
   <meta name="description" content="ARIA hospital operations console — departments, beds and staff on a live editorial carousel." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- fonts load async so they never block first paint on mobile -->
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  </noscript>
   <style>
     :root {
       --paper: #f2f0ea;
@@ -341,6 +345,18 @@
       .hint { display: none; }
       .med-launch { bottom: 42px; }
       .mb-row .ct { display: none; }
+    }
+    /* ---- mobile touch & safe-area pass (ARIA mobile layer) ---- */
+    @media (max-width: 860px) {
+      html { -webkit-text-size-adjust: 100%; }
+      body { overscroll-behavior-y: none; }
+      .nav-link, .med-launch, button, a { touch-action: manipulation; }
+      .nav-link { min-height: 44px; display: inline-flex; align-items: center; }
+      .med-launch { min-height: 44px; bottom: calc(10px + env(safe-area-inset-bottom)); }
+      .ticker { bottom: calc(16px + env(safe-area-inset-bottom)); }
+      nav { padding-top: env(safe-area-inset-top); }
+      .med-book { width: min(560px, calc(100vw - 20px)); max-height: 86vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+      .directory { max-height: 86vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
     }
     @media (prefers-reduced-motion: reduce) {
       * { transition-duration: .01ms !important; animation-duration: .01ms !important; }

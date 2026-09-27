@@ -1,81 +1,16 @@
 /*
-  "Ask ARIA" floating action button — isolated Copilot entry point styles.
-  Scoped under #askAriaButton only; deliberately a different accent (calm
-  teal) from the dashboard (spec §6.3) so it reads as its own product surface.
+  "Ask ARIA" top-nav button styles — isolated Copilot entry point.
+  Scoped to the .ask-aria-action button only; deliberately a different accent
+  (calm teal) from the dashboard (spec §6.3) so it reads as its own surface.
+  The button works in both 3D and 2D modes because the topbar is shared.
 */
-#askAriaButton {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 18px;
-  border: none;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #0d9488, #0f766e);
-  color: #ffffff;
-  cursor: pointer;
-  text-align: left;
-  box-shadow: 0 10px 30px rgba(13, 148, 136, 0.35);
-  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+button.ask-aria-action {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.18), rgba(15, 118, 110, 0.28));
+  border: 1px solid rgba(13, 148, 136, 0.55);
+  color: #5eead4;
 }
 
-#askAriaButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 34px rgba(13, 148, 136, 0.45);
-}
-
-#askAriaButton:disabled {
-  cursor: progress;
-  opacity: 0.65;
-  transform: none;
-}
-
-#askAriaButton .ask-aria-fab-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.16);
-  font-size: 18px;
-  font-weight: 700;
-}
-
-#askAriaButton .ask-aria-fab-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-#askAriaButton .ask-aria-fab-title {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-}
-
-#askAriaButton .ask-aria-fab-sub {
-  font-size: 11.5px;
-  opacity: 0.85;
-}
-
-#askAriaButton.ask-aria-fab--busy .ask-aria-fab-icon {
-  animation: ask-aria-pulse 1s ease-in-out infinite;
-}
-
-@keyframes ask-aria-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(0.85); }
-}
-
-@media (max-width: 640px) {
-  #askAriaButton {
-    right: 16px;
-    bottom: 16px;
-    padding: 10px 14px;
-  }
+button.ask-aria-action:hover {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.3), rgba(15, 118, 110, 0.45));
+  color: #99f6e4;
 }

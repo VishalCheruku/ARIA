@@ -20,7 +20,9 @@ Main dashboard (vanilla JS)                     aria-recovery-copilot/ (this mod
                                            FastAPI backend
                                              ├── safety/ triage gate  (Stage 1 regex + Stage 2 GLM)
                                              ├── retrieval (embeddings + Atlas Vector Search w/ fallback)
-                                             ├── GLM-5.3-flash answer engine (SSE streaming)
+                                             ├── answer engine (SSE streaming): GLM via Z.ai,
+                                             │   or the local extractive RAG composer when no API
+                                             │   key is set — full RAG with zero external APIs
                                              ├── serves the built React SPA at /copilot/chat
                                              └── own MongoDB database: aria_copilot
                                                    (kb_chunks, conversations, messages, escalations)
@@ -36,11 +38,11 @@ Main dashboard (vanilla JS)                     aria-recovery-copilot/ (this mod
 |---|---|
 | `backend/app/` | FastAPI service: routes, safety layer, RAG, resilient main-backend client |
 | `backend/app/safety/emergency_patterns.yaml` | Stage-1 emergency patterns — reviewable without redeploying logic |
-| `backend/seed/` | 64 original knowledge-base chunks (wound, medication, diet/activity, red flags, tiers, FAQ) |
+| `backend/seed/` | 62 original knowledge-base chunks (wound, medication, diet/activity, red flags, tiers, FAQ) |
 | `backend/scripts/seed_kb.py` | Embeds + inserts the KB; fits the lexical IDF table |
 | `backend/scripts/create_vector_index.py` | One-time Atlas Vector Search index creation |
 | `backend/scripts/resilience_smoke.py` | Cross-system resilience checks (spec §11.3) |
-| `backend/tests/` | 129 tests: red-team (0 false negatives), groundedness, circuit breaker, endpoints |
+| `backend/tests/` | 139 tests: red-team (0 false negatives), groundedness, circuit breaker, endpoints, local no-LLM answerer |
 | `frontend/` | Copilot SPA: `/chat` only — streaming bubbles, persistent escalation banner, sources |
 | `docs/INTEGRATION.md` | Exactly what was added to the main ARIA repo |
 | `docs/TESTING.md` | How to run every suite in spec §11 |
@@ -102,6 +104,25 @@ Free starter plans sleep when idle; the first request after a nap takes a few
 seconds. For a patient-facing pilot, keep the service on a paid plan or use an
 uptime pinger on `/health`.
 
+## Answer engine — works with or without an LLM API
+
+The answer path has two modes over the SAME retrieval + safety pipeline
+(`app/routes/health.py` exposes which one is active as `answer_mode`):
+
+- **`local-extractive` (default, no API key)** — with no `ZAI_API_KEY`
+  configured, `app/answerer.py` composes the reply by extracting the most
+  question-relevant sentences from the retrieved chunks (IDF-coverage scoring,
+  duplicate suppression, category lead-ins, emotional acknowledgment) and
+  streams them sentence-by-sentence. Every factual sentence appears verbatim
+  in a retrieved chunk, so grounding is strictly enforced. The Copilot is
+  fully usable with zero external dependencies and zero cost.
+- **`llm` (when an API key exists)** — `ZAI_API_KEY` + `ZAI_BASE_URL` +
+  `ZAI_MODEL` drive GLM (or any OpenAI-compatible endpoint) with the verbatim
+  §9.4 grounding prompt. The switch is automatic; no code changes.
+
+Stage-2 model triage is enabled only in `llm` mode; Stage-1 pattern triage
+always runs, and the escalation flow is identical in both modes.
+
 ## Safety model (spec §9)
 
 1. **Stage 1** — conservative pattern match against `emergency_patterns.yaml` (cardiac, breathing,
@@ -111,6 +132,9 @@ uptime pinger on `/health`.
 3. On escalation: the fixed §9.3 safety message (never model-generated), an `escalations` record,
    a `POST /api/alerts` write into the main app's existing EventLog pipeline, and a persistent red
    banner in the UI. Signals are logged by category — never raw message text.
-4. Non-emergency questions are answered only from retrieved chunks (top-k=5, cosine threshold 0.72);
-   with no reliable match the Copilot says so and defers to the care team. Sources are attached to
-   every grounded answer.
+4. Non-emergency questions are answered only from retrieved chunks (top-k=5;
+   semantic cosine threshold 0.72, lexical dev embedder: BM25 ranking with a
+   0.22 threshold — the same BM25Scorer ranks both the in-memory store and the
+   Mongo fallback so dev matches tests). With no reliable match the Copilot
+   says so and defers to the care team. Sources are attached to every
+   grounded answer.

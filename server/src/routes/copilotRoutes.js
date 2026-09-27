@@ -135,6 +135,10 @@ function requireCopilotToken(req) {
   }
 }
 
+function isPlaceholderName(name) {
+  return /^(—|-|unknown( patient)?|n\/a)$/i.test(String(name || "").trim());
+}
+
 /* ---------------- POST /api/copilot-token (spec §8.5) ---------------- */
 router.post("/copilot-token", requireAuth, rateLimit({ name: "copilot-token", windowMs: 60_000, max: 10 }), async (req, res) => {
   try {
@@ -151,7 +155,7 @@ router.post("/copilot-token", requireAuth, rateLimit({ name: "copilot-token", wi
     if (patientId) {
       patient = await Patient.findById(String(patientId)).maxTimeMS(1500).catch(() => null);
     }
-    if (!patient && name) {
+    if (!patient && name && !isPlaceholderName(name)) {
       patient = await Patient.findOne({ name: String(name).trim() })
         .sort({ createdAt: -1 })
         .maxTimeMS(1500)
@@ -195,8 +199,9 @@ router.get("/patients/:id/context-summary", rateLimit({ name: "context-summary",
       .catch(() => null);
 
     const riskLevel = String(latestReport?.risk?.level || "").toUpperCase();
+    const rawFirstName = String(patient.name || "").split(/\s+/)[0] || "";
     const summary = {
-      first_name: String(patient.name || "").split(/\s+/)[0] || "",
+      first_name: isPlaceholderName(rawFirstName) ? "" : rawFirstName,
       risk_tier: ["LOW", "MEDIUM", "HIGH"].includes(riskLevel) ? riskLevel.charAt(0) + riskLevel.slice(1).toLowerCase() : "",
       primary_diagnosis: patient.diagnosis || "",
       medications: Array.isArray(patient.medicines) ? patient.medicines.filter(Boolean) : [],

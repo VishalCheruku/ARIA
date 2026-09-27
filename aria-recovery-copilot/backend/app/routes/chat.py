@@ -38,6 +38,7 @@ from app.answer import (
     sources_from,
     stream_answer,
 )
+from app.answerer import stream_local_answer
 from app.db import StoreUnavailable
 from app.escalations import run_escalation
 from app.main_client import MainBackendError
@@ -171,11 +172,18 @@ async def chat(body: ChatRequest, request: Request) -> StreamingResponse:
 
         collected: list[str] = []
         try:
-            async for delta in stream_answer(
-                answer_request,
-                llm_stream=lambda messages: app_state.llm.stream_chat(messages),
-                max_history=settings.conversation_history_messages,
-            ):
+            if app_state.llm is not None:
+                answer_stream = stream_answer(
+                    answer_request,
+                    llm_stream=lambda messages: app_state.llm.stream_chat(messages),
+                    max_history=settings.conversation_history_messages,
+                )
+            else:
+                # No LLM configured (no API key): the deterministic extractive
+                # path answers from the same retrieved chunks — the Copilot
+                # stays useful with zero external API dependencies.
+                answer_stream = stream_local_answer(answer_request, embedder=app_state.embedder)
+            async for delta in answer_stream:
                 collected.append(delta)
                 yield sse_event("delta", {"text": delta})
         except Exception as error:

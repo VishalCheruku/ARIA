@@ -29,6 +29,27 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+
+def load_env_file(path: Path) -> None:
+    """Minimal KEY=VALUE loader (no dotenv dependency). Existing env wins."""
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+# Load the main repo's .env (two levels up: backend/scripts -> backend -> module -> repo root)
+# and the backend's own .env so `--provider` isn't needed to reach the right database.
+_module_root = Path(__file__).resolve().parent.parent
+load_env_file(_module_root.parent.parent / ".env")
+load_env_file(_module_root / ".env")
+
 from app.config import Settings  # noqa: E402
 from app.embeddings import build_embedder, embed_text_for_record  # noqa: E402
 from seed import all_chunks  # noqa: E402

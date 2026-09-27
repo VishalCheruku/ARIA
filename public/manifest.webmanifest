@@ -1,0 +1,31 @@
+{
+  "name": "ARIA AI — Post-Discharge Intelligence",
+  "short_name": "ARIA AI",
+  "description": "ARIA reads discharge documents, tracks recovery risk, and follows up by SMS and voice.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#04050b",
+  "theme_color": "#04050b",
+  "icons": [
+    {
+      "src": "/icons/aria-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/aria-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/aria-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

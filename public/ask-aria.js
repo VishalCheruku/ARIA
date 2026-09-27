@@ -36,7 +36,8 @@
       var node = document.querySelector("#patientReportName");
       var name = node ? String(node.textContent || "").trim() : "";
       /* placeholder states rendered by the dashboard are not patients */
-      if (!name || name === "—" || /reading clinical signal/i.test(name) || /awaiting/i.test(name)) return "";
+      if (!name || /^(—|-|unknown( patient)?|n\/a)$/i.test(name) ||
+          /reading clinical signal/i.test(name) || /awaiting/i.test(name)) return "";
       return name;
     } catch (_error) {
       return "";
@@ -67,7 +68,6 @@
   function setBusy(button, busy) {
     try {
       button.disabled = busy;
-      button.classList.toggle("ask-aria-fab--busy", busy);
     } catch (_error) { /* never break the page over button state */ }
   }
 
@@ -80,6 +80,11 @@
       body: JSON.stringify({ name: currentlyDisplayedPatientName() })
     })
       .then(function (response) {
+        if (response.status === 401) {
+          var error = new Error("not signed in");
+          error.notSignedIn = true;
+          throw error;
+        }
         if (!response.ok) throw new Error("token request failed: " + response.status);
         return response.json();
       })
@@ -88,9 +93,13 @@
         var opened = window.open(copilotChatUrl(data.token), "_blank", "noopener");
         if (!opened) showToast("Allow pop-ups to open the ARIA Copilot.");
       })
-      .catch(function () {
-        /* Spec §6.1 step 3: on ANY failure, a calm toast and nothing else. */
-        showToast("Copilot is temporarily unavailable");
+      .catch(function (error) {
+        if (error && error.notSignedIn) {
+          showToast("Sign in first, then Ask ARIA opens your recovery chat.");
+        } else {
+          /* Spec §6.1 step 3: on ANY failure, a calm toast and nothing else. */
+          showToast("Copilot is temporarily unavailable");
+        }
       })
       .finally(function () {
         setBusy(button, false);
@@ -99,7 +108,9 @@
 
   function init() {
     try {
-      var button = document.getElementById("askAriaButton");
+      /* Single entry point: the ✦ Ask ARIA action in the top navigation,
+         shared by the 3D and 2D home modes. */
+      var button = document.getElementById("askAriaHomeButton");
       if (!button) return;
       button.addEventListener("click", function () {
         try {

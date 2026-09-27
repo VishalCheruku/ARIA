@@ -1,0 +1,514 @@
+/* ============================================================================
+   ARIA AI — MOBILE-RESPONSIVE LAYER
+   Loaded after home-station.css so every rule here can override desktop.
+
+   Breakpoint architecture (mobile-first overrides, desktop untouched):
+     • base (320–767px)   phones        → 2D fallback UI, bottom nav, sheets
+     • ≤479px             small phones  → tighter type/spacing
+     • 480–767px          standard phones
+     • 768–1023px         tablets       → 2-col layouts, 3D allowed
+     • 1024–1439px        desktop       → unchanged (only touch refinements)
+     • ≥1440px            large desktop → readability caps
+
+   Two independent hooks are used on purpose:
+     • body.mobile      → JS device detection (UA / touch / screen). Gets the
+                          full 2D UI (bottom nav, drawer, accordion) even on an
+                          800px-wide tablet where a width query would not fire.
+     • @media (≤767px)  → pure CSS safety net so a resized desktop window also
+                          degrades cleanly.
+
+   3D policy: #gl (WebGL), vignette, scan and grain are hidden with CSS
+   display:none — the DOM nodes stay (cheap), the renderer stays idle, and the
+   flat 2D story becomes the interface. Functional mini-visuals (ECG traces,
+   monitor SVGs, the OR story) are kept and simply scaled down.
+   ============================================================================ */
+
+/* ---------- 0 · touch foundations (all devices, desktop visuals intact) ---- */
+* { -webkit-tap-highlight-color: transparent; }
+button, a, input, select, textarea, label[for], .dot { touch-action: manipulation; }
+
+/* visible keyboard focus everywhere (WCAG 2.4.7) — desktop already relies on
+   hover, so focus rings matter mostly on touch/keyboard devices */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--red, #ed2f34);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* :active feedback replaces hover-only affordances on touch surfaces */
+@media (hover: none) {
+  button:active, a:active, .dot:active, label.dropzone:active { opacity: .72; }
+  button, a { transition: opacity .12s ease; }
+}
+
+/* ---------- 1 · body.mobile — the WebGL stage and chrome come down ---------- */
+body.mobile #gl,
+body.mobile .vignette,
+body.mobile .scan,
+body.mobile .grain,
+body.mobile .dots,
+body.mobile .counter,
+body.mobile .mini-footer,
+body.mobile .hero-intro,
+body.mobile .fly-nav,
+/* fun mode drives the 3D strip only — it has no meaning in the 2D story */
+body.mobile .fun-pill { display: none !important; }
+
+/* pure-CSS safety net: a desktop window narrowed below phone width also
+   drops the 3D stage (the 3D renderer itself is gated in JS) */
+@media (max-width: 767px) {
+  #gl, .vignette, .scan, .grain { display: none; }
+}
+
+/* ---------- 2 · mobile chrome: topbar, hamburger, bottom nav, drawer ------- */
+body.mobile .topbar { padding: 10px 4vw 10px; gap: 10px; }
+body.mobile .topbar-right { display: none; }          /* actions live in the nav/drawer */
+body.mobile .brand small { display: none; }
+body.mobile .brand b { font-size: 1rem; }
+
+.hamburger {
+  display: none;                                       /* desktop: never shown */
+  width: 44px; height: 44px; margin-left: auto;
+  border: 1px solid var(--line-strong, rgba(22,22,22,.18));
+  border-radius: 12px; background: rgba(255,255,255,.72);
+  flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  cursor: pointer;
+}
+.hamburger span {
+  display: block; width: 18px; height: 2px; border-radius: 2px;
+  background: var(--ink, #161616); transition: transform .2s ease, opacity .2s ease;
+}
+.hamburger[aria-expanded="true"] span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.hamburger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.hamburger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+body.theme-night .hamburger { background: rgba(20,24,44,.7); border-color: rgba(255,255,255,.16); }
+body.theme-night .hamburger span { background: #e8ebff; }
+
+body.mobile .hamburger { display: inline-flex; }
+
+/* --- bottom navigation (5 main sections) --- */
+.mobile-bottomnav {
+  display: none;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+  grid-template-columns: repeat(5, 1fr);
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+  background: rgba(255,253,249,.92);
+  border-top: 1px solid var(--line, rgba(22,22,22,.1));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+body.theme-night .mobile-bottomnav {
+  background: rgba(7,9,20,.92);
+  border-top-color: rgba(255,255,255,.12);
+}
+body.mobile .mobile-bottomnav { display: grid; }
+
+.bn-item {
+  appearance: none; border: 0; background: none; cursor: pointer;
+  min-height: 48px;                                     /* Android HIG ≥48px */
+  padding: 6px 2px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  color: var(--muted, #6d6c67);
+  font: 600 .58rem/1 var(--mono, "IBM Plex Mono", monospace);
+  letter-spacing: .08em; text-transform: uppercase;
+  border-radius: 12px;
+}
+.bn-item svg { width: 21px; height: 21px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+.bn-item.active { color: var(--red, #ed2f34); }
+.bn-item.active svg { stroke: var(--red, #ed2f34); }
+
+/* --- step indicator (1/5 · INTAKE) --- */
+.mobile-step {
+  display: none;
+  position: fixed; left: 50%; bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%); z-index: 50;
+  font: 700 .62rem var(--mono, "IBM Plex Mono", monospace);
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink, #161616);
+  background: rgba(255,253,249,.94);
+  border: 1px solid var(--line-strong, rgba(22,22,22,.18));
+  padding: 7px 14px; border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(37,28,18,.14);
+  pointer-events: none; white-space: nowrap;
+}
+body.theme-night .mobile-step {
+  color: #e8ebff; background: rgba(10,13,28,.94);
+  border-color: rgba(255,255,255,.18); box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+body.mobile .mobile-step { display: block; }
+
+/* --- drawer (hamburger) --- */
+.mobile-drawer { display: none; }
+.mobile-drawer.open { display: block; }
+.drawer-backdrop {
+  position: fixed; inset: 0; z-index: 88;
+  background: rgba(4,5,11,.5);
+  opacity: 0; transition: opacity .25s ease;
+}
+.mobile-drawer.open .drawer-backdrop { opacity: 1; }
+.drawer-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 90;
+  width: min(320px, 86vw);
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  background: #fffdf9;
+  border-left: 1px solid var(--line, rgba(22,22,22,.1));
+  box-shadow: -24px 0 60px rgba(37,28,18,.2);
+  transform: translateX(102%);
+  transition: transform .28s cubic-bezier(.22, .8, .3, 1);
+  display: flex; flex-direction: column; gap: 6px;
+  overflow-y: auto;
+}
+.mobile-drawer.open .drawer-panel { transform: translateX(0); }
+body.theme-night .drawer-panel { background: #0b0e1e; border-left-color: rgba(255,255,255,.12); }
+.drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 4px 12px; border-bottom: 1px solid var(--line, rgba(22,22,22,.1));
+}
+.drawer-head b { font: 700 1rem var(--disp, "Space Grotesk", sans-serif); letter-spacing: -.03em; }
+.drawer-item {
+  appearance: none; border: 1px solid transparent; background: none; cursor: pointer;
+  min-height: 48px; padding: 12px 12px; border-radius: 12px;
+  display: flex; align-items: center; gap: 12px;
+  font: 600 .95rem var(--body, "DM Sans", sans-serif);
+  color: var(--ink, #161616); text-align: left;
+}
+.drawer-item:active { background: rgba(237,47,52,.08); }
+.drawer-item i { font-style: normal; width: 22px; text-align: center; color: var(--red, #ed2f34); }
+.drawer-foot {
+  margin-top: auto; padding: 14px 6px 0;
+  font: 700 .58rem var(--mono, monospace); letter-spacing: .22em;
+  color: var(--muted, #6d6c67);
+}
+
+/* --- toast (copy feedback, errors) --- */
+.m-toast {
+  position: fixed; left: 50%; bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%) translateY(14px);
+  z-index: 95; max-width: 86vw;
+  background: #161616; color: #fff;
+  font: 600 .82rem var(--body, "DM Sans", sans-serif);
+  padding: 11px 18px; border-radius: 999px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.35);
+  opacity: 0; pointer-events: none;
+  transition: opacity .22s ease, transform .22s ease;
+}
+.m-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.m-toast.ok { background: var(--green, #138a62); }
+.m-toast.err { background: var(--red-deep, #ba2025); }
+
+/* ---------- 3 · station surfaces on phones: full-bleed sheets -------------- */
+@media (max-width: 767px) {
+  /* every card, popped or in-story, becomes a full-width surface */
+  .station-panel .intake-panel,
+  .station-panel .dashboard-panel,
+  .station-card,
+  .login-card { width: 100%; max-width: none; }
+
+  .station-panel .intake-panel { max-height: none; overflow: visible; }
+
+  /* popped cards → edge-to-edge sheet (override the desktop centering) */
+  body.mode-2d .station-panel.popped,
+  .station-panel.popped {
+    left: 0 !important; top: 0 !important;
+    transform: none !important;
+    width: 100vw; max-width: 100%; height: 100vh; height: 100dvh;
+    max-height: none; border-radius: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  body.mode-2d .station-panel.popped .intake-panel,
+  body.mode-2d .station-panel.popped .dashboard-panel { max-height: none; overflow: visible; }
+  .station-panel.popped .dashboard-panel { height: auto; max-height: none; overflow-y: visible; }
+
+  .panel-close { width: 44px; height: 44px; top: 10px; right: 10px; font-size: 1.15rem; }
+
+  .station-card { padding: 22px 18px 26px; }
+  .station-card .panel-head h2 { font-size: 1.3rem; }
+  .station-desc { font-size: .95rem; }
+}
+
+/* ---------- 4 · dashboard: stacked + accordion on phones ------------------- */
+@media (max-width: 767px) {
+  .analysis-report-layout { grid-template-columns: 1fr; gap: 14px; }
+  .report-side { display: grid; gap: 14px; }
+  .dashboard-panel { padding: 16px 14px 24px; }
+  .dashboard-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .patient-identity { align-items: flex-start; }
+  .patient-avatar { width: 44px; height: 44px; font-size: 1.2rem; }
+  .dashboard-head h2 { font-size: 1.25rem; }
+  .risk-badge { width: 100%; justify-content: center; min-height: 44px; }
+
+  .command-summary { flex-direction: column; gap: 12px; }
+  .decision-ring { width: 64px; height: 64px; }
+
+  .snapshot.simple-report { grid-template-columns: 1fr; gap: 10px; }
+  .snapshot.simple-report > div {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    border-bottom: 1px dashed var(--line, rgba(22,22,22,.1)); padding-bottom: 8px;
+  }
+  .vitals { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metric-card { padding: 14px; min-height: 96px; }
+  .metric-card strong { font-size: 1.55rem; }
+  .matrix.compact-matrix { grid-template-columns: 1fr 1fr; }
+
+  /* accordion behavior is attached by js/mobile.js on phones */
+  .m-acc .glass-card > .card-title {
+    cursor: pointer; user-select: none;
+    min-height: 48px;                                     /* whole header is the tap target */
+    position: relative; padding-right: 44px;
+  }
+  .m-acc .glass-card > .card-title::after {
+    content: "+"; position: absolute; right: 4px; top: 50%;
+    transform: translateY(-50%);
+    width: 32px; height: 32px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: rgba(237,47,52,.1); color: var(--red, #ed2f34);
+    font: 800 1.05rem var(--mono, monospace);
+  }
+  .m-acc .glass-card:not(.m-closed) > .card-title::after { content: "−"; }
+  .m-acc .glass-card.m-closed > *:not(.card-title) { display: none; }
+
+  pre#extractedText { max-height: 40vh; overflow: auto; -webkit-overflow-scrolling: touch; }
+  .timeline, .recent-list { max-height: none; }
+}
+
+/* ---------- 5 · forms & touch targets -------------------------------------- */
+@media (max-width: 767px) {
+  .login-form input,
+  .login-form label { width: 100%; }
+  .login-form input {
+    font-size: 16px;                                      /* ≥16px blocks iOS auto-zoom */
+    min-height: 48px; padding: 12px 14px; border-radius: 12px;
+  }
+  .login-form label span { font-size: .8rem; }
+  .primary, .ghost-button, .top-action, .clear-log {
+    min-height: 44px;                                     /* Apple HIG minimum */
+  }
+  .primary, .analyze-button, .login-submit { width: 100%; justify-content: center; }
+  .auth-tab { min-height: 44px; }
+  .auth-error { color: var(--red-deep, #ba2025); font-weight: 700; }
+
+  .demo-list button { min-height: 52px; }
+  .clear-log { padding: 10px 14px; }
+
+  /* password visibility toggle (inserted by js/mobile.js) */
+  .pw-wrap { position: relative; display: block; width: 100%; }
+  .pw-wrap input { width: 100%; padding-right: 52px; }
+  .pw-toggle {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    width: 42px; height: 42px; border: 0; border-radius: 10px;
+    background: none; cursor: pointer;
+    font-size: 1.05rem; color: var(--muted, #6d6c67);
+    display: grid; place-items: center;
+  }
+}
+
+/* ---------- 6 · camera-first upload + progress ----------------------------- */
+.capture-row {
+  display: none;                                        /* desktop keeps drag & drop */
+  grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px;
+}
+body.mobile .capture-row { display: grid; }
+.capture-btn {
+  appearance: none; cursor: pointer;
+  min-height: 48px; padding: 12px 10px; border-radius: 14px;
+  border: 1.5px dashed var(--red, #ed2f34);
+  background: rgba(237,47,52,.06);
+  font: 700 .88rem var(--body, "DM Sans", sans-serif);
+  color: var(--ink, #161616);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.capture-btn:active { background: rgba(237,47,52,.14); }
+.capture-btn.alt { border-style: solid; border-color: var(--line-strong, rgba(22,22,22,.18)); background: rgba(255,255,255,.6); }
+
+/* thumbnail preview inside the dropzone */
+.drop-thumb {
+  display: block; width: 100%; max-height: 180px; object-fit: cover;
+  border-radius: 14px; margin: 4px 0 10px;
+  border: 1px solid var(--line, rgba(22,22,22,.1));
+}
+
+/* upload progress (shown by app.js during POST /api/reports/analyze) */
+.upload-progress {
+  margin: 12px 0 2px; padding: 12px 14px;
+  border: 1px solid var(--line, rgba(22,22,22,.1));
+  border-radius: 14px; background: rgba(255,255,255,.66);
+}
+body.theme-night .upload-progress { background: rgba(16,20,40,.7); border-color: rgba(255,255,255,.12); }
+.up-row { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.up-row b {
+  font: 700 .8rem var(--body, sans-serif);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.up-row span { font: 800 .78rem var(--mono, monospace); color: var(--red, #ed2f34); }
+.up-bar {
+  height: 10px; border-radius: 99px; overflow: hidden;
+  background: rgba(22,22,22,.08); margin: 8px 0 6px;
+}
+.up-bar i {
+  display: block; height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--red, #ed2f34), var(--orange, #f16d37));
+  border-radius: 99px; transition: width .18s ease;
+}
+.up-meta { display: flex; justify-content: space-between; gap: 10px; font: 600 .68rem var(--mono, monospace); color: var(--muted, #6d6c67); }
+.up-retry {
+  margin-top: 10px; width: 100%; min-height: 44px;
+  border: 1px solid var(--red, #ed2f34); border-radius: 12px;
+  background: none; color: var(--red, #ed2f34);
+  font: 700 .85rem var(--body, sans-serif); cursor: pointer;
+}
+
+/* ---------- 7 · monitoring calendar → full-screen sheet on phones ---------- */
+@media (max-width: 767px) {
+  .cal-modal { place-items: stretch; }
+  .cal-page {
+    width: 100%; max-width: none; height: 100vh; height: 100dvh;
+    max-height: none; border-radius: 0; padding: 16px 14px calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  .cal-head { flex-direction: column; gap: 10px; }
+  .cal-head h2 { font-size: 1.2rem; }
+  .cal-stats { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cal-toolbar { gap: 8px; }
+  .cal-nav { width: 48px; height: 48px; }               /* swipe also works — js/mobile.js */
+  .cal-week-row span { font-size: .62rem; }
+  .cal-grid { gap: 4px; }
+  .cal-cell { min-height: 46px; }
+  /* hover tip cards don't exist on touch — the whole cell is tappable and the
+     day info shows inline */
+  .cal-tip { display: none; }
+  .cal-legend { gap: 8px; font-size: .68rem; }
+  .cal-legend span { min-height: 32px; }
+}
+
+/* ---------- 8 · the 2D flat story, sized for phones ------------------------ */
+@media (max-width: 767px) {
+  body.mode-2d .topbar { position: sticky; }
+
+  .flat-hero { min-height: 92vh; padding: 90px 5vw 40px; }
+  .flat-hero-copy h2 { font-size: clamp(2.2rem, 11vw, 3.2rem); }
+  .flat-hero-word { font-size: clamp(3rem, 24vw, 6rem); }
+  .flat-hero-actions { flex-direction: column; align-items: stretch; gap: 10px; width: 100%; max-width: 420px; }
+  .flat-scroll-cue { bottom: 14px; }
+
+  .flat-statement, .flat-section, .flat-cta { padding-left: 5vw; padding-right: 5vw; }
+  .flat-giant { font-size: clamp(2rem, 9.5vw, 3rem); }
+
+  /* duo grid (calendar + loop) stacks to one column */
+  .flat-duo-grid { grid-template-columns: 1fr; gap: 42px; }
+  .flat-duo-col { min-height: auto; }
+
+  .flat-module-grid { grid-template-columns: 1fr; gap: 14px; }
+  .flat-chip-row { gap: 8px; }
+  .flat-chip { min-height: 44px; padding: 10px 16px; font-size: .82rem; }
+
+  .flat-collage { transform: scale(.82); }
+  .flat-cards { grid-template-columns: 1fr; gap: 12px; }
+  .flat-alert-row { flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px; }
+
+  /* OR story + heart world stay (functional ECG/monitor visuals) but calm down:
+     blur filters are the heaviest paint cost on phones */
+  .or-vessel svg, .or-room svg { filter: none; }
+  .or-hud { transform: scale(.85); transform-origin: top left; }
+  .or-hud-vitals { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .heart-flow { padding: 60px 5vw; }
+  .heart-panel { padding: 20px 18px; }
+  .hp-dodont { grid-template-columns: 1fr; gap: 12px; }
+  .heart-labels .hl { font-size: .6rem; }
+
+  .flat-footer { padding: 40px 5vw calc(28px + env(safe-area-inset-bottom, 0px)); }
+  .flat-footer-links { flex-wrap: wrap; gap: 12px; }
+
+  /* room for the fixed bottom nav */
+  body.mobile #flatPage { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---------- 9 · performance guards on phones --------------------------------
+   backdrop-filter and large blurs are the #1 paint cost on mid-range GPUs. */
+body.mobile .signal-card,
+body.mobile .mobile-bottomnav,
+body.mobile .dashboard-panel,
+body.mobile .intake-panel,
+body.mobile .station-card,
+body.mobile .login-card,
+body.mobile .glass-card {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+body.mobile .grain, body.mobile .scan { animation: none !important; }
+
+@media (max-width: 767px) {
+  .signal-card, .glass-card, .login-card, .intake-panel, .dashboard-panel, .station-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .ecg-trace, .flat-ecg-line, .heart-strip-line { vector-effect: non-scaling-stroke; }
+}
+
+/* ---------- 10 · small phones (≤479px) -------------------------------------- */
+@media (max-width: 479px) {
+  .topbar { padding: 8px 3vw; }
+  .brand b { font-size: .92rem; }
+  .flat-hero { min-height: 88vh; }
+  .vitals { grid-template-columns: 1fr; }
+  .matrix.compact-matrix { grid-template-columns: 1fr; }
+  .capture-row { grid-template-columns: 1fr; }
+  .demo-list button { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .cal-cell { min-height: 40px; }
+  .mobile-step { font-size: .56rem; bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---------- 11 · standard phones (480–767px) -------------------------------- */
+@media (min-width: 480px) and (max-width: 767px) {
+  .flat-cards { grid-template-columns: repeat(2, 1fr); }
+  .vitals { grid-template-columns: repeat(2, 1fr); }
+  .snapshot.simple-report { grid-template-columns: 1fr 1fr; }
+}
+
+/* ---------- 12 · phone landscape: compact nav ------------------------------- */
+@media (max-width: 767px) and (orientation: landscape) {
+  .mobile-bottomnav { grid-template-columns: repeat(5, auto); justify-content: space-around; padding-top: 2px; }
+  .bn-item { min-height: 40px; flex-direction: row; gap: 8px; padding: 4px 14px; }
+  .bn-item svg { width: 18px; height: 18px; }
+  .mobile-step { bottom: auto; top: calc(10px + env(safe-area-inset-top, 0px)); }
+  body.mobile #flatPage { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---------- 13 · tablets (768–1023px) ----------------------------------------
+   The 3D strip may stay on, but every panel is tuned for touch. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .station-panel .intake-panel { width: min(500px, 88vw); }
+  .station-panel .dashboard-panel { width: min(760px, 92vw); }
+  .analysis-report-layout { grid-template-columns: 1fr; }
+  .vitals { grid-template-columns: repeat(2, 1fr); }
+  .primary, .ghost-button, .top-action, .auth-tab, .cal-nav { min-height: 44px; }
+  .login-form input { font-size: 16px; min-height: 46px; }
+  .cal-cell { min-height: 46px; }
+  .flat-duo-grid { grid-template-columns: 1fr 1fr; gap: 28px; }
+  .flat-cards { grid-template-columns: repeat(3, 1fr); }
+  .hp-dodont { grid-template-columns: 1fr 1fr; }
+}
+
+/* ---------- 14 · desktop (1024–1439px) — visuals unchanged ------------------- */
+@media (min-width: 1024px) and (max-width: 1439px) {
+  /* only touch refinements; layout is owned by home-station.css */
+  .top-action, .ghost-button, .primary { min-height: 40px; }
+}
+
+/* ---------- 15 · large desktop (≥1440px) — readability caps ----------------- */
+@media (min-width: 1440px) {
+  .flat-hero-copy h2 { font-size: clamp(3.4rem, 4.2vw, 5.2rem); }
+  .station-panel .dashboard-panel { width: min(1180px, 88vw); }
+}
+
+/* ---------- 16 · reduced motion --------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .mobile-bottomnav, .drawer-panel, .m-toast, .up-bar i { transition: none !important; }
+  .bn-item svg, .hamburger span { transition: none !important; }
+  html { scroll-behavior: auto; }
+}
+
+/* ---------- 17 · print (keep the desktop print rule working) ----------------- */
+@media print {
+  .mobile-bottomnav, .mobile-step, .mobile-drawer, .hamburger, .m-toast, .capture-row, .upload-progress { display: none !important; }
+}

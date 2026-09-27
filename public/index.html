@@ -2,21 +2,29 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#04050b" />
+  <meta name="description" content="ARIA AI — post-discharge monitoring: OCR intake, readmission risk, SMS and voice follow-ups." />
   <title>ARIA AI — Post-Discharge Intelligence</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Orbitron:wght@600;800;900&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet" />
+  <!-- Fonts load async (media=print swap trick) so they never block first paint -->
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Orbitron:wght@600;800;900&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Orbitron:wght@600;800;900&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet" />
+  </noscript>
   <link rel="stylesheet" href="/home-station.css" />
   <!-- Isolated Copilot entry point (Ask ARIA): its own styles, never shared with the dashboard -->
   <link rel="stylesheet" href="/ask-aria.css" />
+  <!-- Mobile-responsive layer: breakpoints + 2D fallback UI (loads last, overrides desktop) -->
+  <link rel="stylesheet" href="/mobile-responsive.css" />
 </head>
 <body class="theme-night">
 
   <!-- ARIA logo video splash — plays on first load and every time the 2D home opens -->
   <div id="intro" class="intro-screen" aria-hidden="true">
-    <video id="ariaLogoVideo" src="/media/aria-logo.mp4" muted playsinline preload="auto" disablepictureinpicture></video>
+    <video id="ariaLogoVideo" src="/media/aria-logo.mp4" muted playsinline preload="none" disablepictureinpicture></video>
     <div class="intro-fallback">
       <div class="intro-noise"></div>
       <div class="intro-core">
@@ -57,11 +65,16 @@
       </span>
     </a>
     <div class="topbar-right">
+      <button class="top-action ask-aria-action" id="askAriaHomeButton" type="button" title="Chat about your recovery">✦ Ask ARIA <span>↗</span></button>
       <button class="top-action theme-toggle" id="themeToggle" type="button">☀ DAY</button>
       <button class="top-action dashboard-action" id="dashboardButton" type="button">Dashboard <span>↗</span></button>
       <button class="top-action auth-action" id="loginButton" type="button">Login <span>↗</span></button>
       <button class="top-action" id="scrollIntake">Analyze document <span>↗</span></button>
     </div>
+    <!-- mobile: the only topbar control — everything else lives in the bottom nav + drawer -->
+    <button class="hamburger" id="hamburgerBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobileDrawer">
+      <span></span><span></span><span></span>
+    </button>
   </header>
 
   <!-- hero copy, visible on station 01 -->
@@ -99,6 +112,23 @@
         </div>
         <span class="drop-badge">BROWSE FILES</span>
       </label>
+
+      <!-- mobile camera-first capture: primary = rear camera, secondary = photo library.
+           Picked files are injected into #documentInput, so analyze/drag state flows stay unchanged. -->
+      <div class="capture-row" role="group" aria-label="Capture or choose a photo of the document">
+        <button class="capture-btn" id="cameraCapture" type="button">📷 Take a photo</button>
+        <button class="capture-btn alt" id="photoLibrary" type="button">🖼 Photo library</button>
+      </div>
+      <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
+      <input id="libraryInput" type="file" accept="image/*" hidden />
+
+      <!-- upload progress: bytes, %, ETA, retry (shown by app.js during upload) -->
+      <div class="upload-progress" id="uploadProgress" hidden aria-live="polite">
+        <div class="up-row"><b id="upFileName">Uploading…</b><span id="upPercent">0%</span></div>
+        <div class="up-bar"><i id="upBarFill"></i></div>
+        <div class="up-meta"><span id="upSize">0.0 / 15.0 MB</span><span id="upEta">estimating…</span></div>
+        <button class="up-retry" id="upRetry" type="button" hidden>Upload failed — tap to retry</button>
+      </div>
 
       <div class="drop-support">
         <span>OCR preprocessing</span><b>DE-SKEW · DENOISE · CONTRAST · 2-PASS</b>
@@ -1295,9 +1325,43 @@
     <span>POST-DISCHARGE CARE · RISK-AWARE ROUTING · OCR INTELLIGENCE</span>
   </footer>
 
-  <audio id="bgm" src="/media/aria-theme.mp3" loop preload="auto"></audio>
+  <!-- ================= MOBILE CHROME (hidden on desktop by mobile-responsive.css)
+       Bottom nav = 5 main sections; hamburger drawer = everything else.
+       Populated and driven by /js/mobile.js. ================= -->
+  <p class="mobile-step" id="mobileStep" aria-live="polite">1/5 · INTAKE</p>
+  <nav class="mobile-bottomnav" id="mobileBottomNav" role="navigation" aria-label="Main sections"></nav>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <div class="mobile-drawer" id="mobileDrawer" hidden>
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
+    <nav class="drawer-panel" role="navigation" aria-label="More options">
+      <div class="drawer-head">
+        <b>ARIA AI</b>
+        <button class="panel-close" id="drawerClose" type="button" aria-label="Close menu">✕</button>
+      </div>
+      <button class="drawer-item" data-action="doctors" type="button"><i>✚</i>Doctors Network</button>
+      <button class="drawer-item" data-action="hospital" type="button"><i>⌂</i>Hospital Management</button>
+      <button class="drawer-item" data-action="ask" type="button"><i>✦</i>Ask ARIA</button>
+      <button class="drawer-item" data-action="theme" type="button"><i>☾</i>Toggle day / night</button>
+      <button class="drawer-item" data-action="music" type="button"><i>♪</i>Toggle music</button>
+      <button class="drawer-item" data-action="mode3d" type="button" hidden><i>◈</i>City version (3D)</button>
+      <p class="drawer-foot">AROGYA INTELLIGENT AGENT</p>
+    </nav>
+  </div>
+
+  <audio id="bgm" src="/media/aria-theme.mp3" loop preload="none"></audio>
+
+  <!-- 3D scene loads on desktop only. Phones/tablets never download three.js
+       (~300KB+) and never boot WebGL — they get the pure-2D home. The inline
+       scene script below already degrades gracefully when THREE is absent. -->
+  <script>
+    window.ARIA_IS_MOBILE = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent)
+      || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent))
+      || Math.min(window.screen.width, window.screen.height) <= 480
+      || window.innerWidth <= 480;
+    if (!window.ARIA_IS_MOBILE) {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+    }
+  </script>
   <script>
   /* ============================================================
      ARIA 3D STATION STRIP — with sound engine + 2D flat mode
@@ -1824,8 +1888,10 @@
   }
 
   let current = 0;
-  let camPos = new THREE.Vector3(0, 5.7, 22);
-  let camLook = new THREE.Vector3(0, 4.4, -20);
+  /* plain-object stand-ins when three.js is absent (mobile): the tween/loop code
+     below only touches these as vectors when scene3d is true, which requires THREE */
+  let camPos = typeof THREE !== "undefined" ? new THREE.Vector3(0, 5.7, 22) : { x: 0, y: 5.7, z: 22 };
+  let camLook = typeof THREE !== "undefined" ? new THREE.Vector3(0, 4.4, -20) : { x: 0, y: 4.4, z: -20 };
   let camRoll = 0;                           /* dutch tilt, radians around the view axis */
   let tween = null;
   /* glide ease — slow start, slow landing, feels like drifting through space */
@@ -1964,8 +2030,9 @@
     goTo(current + (e.deltaY > 0 ? 1 : -1));
   }, { passive: true });
 
-  /* subtle drag parallax + click-to-open gates */
-  const ray = new THREE.Raycaster(), v2 = new THREE.Vector2();
+  /* subtle drag parallax + click-to-open gates (raycaster exists only with three.js) */
+  const ray = typeof THREE !== "undefined" ? new THREE.Raycaster() : null;
+  const v2 = typeof THREE !== "undefined" ? new THREE.Vector2() : null;
   const gateIndex = new Map();
   let dragX = 0, dragging = false, px = 0, downX = 0, downY = 0, downOnUI = true;
   addEventListener('pointermove', e => {
@@ -2616,12 +2683,19 @@
   }
   try {
     if (localStorage.getItem('aria-theme') === 'day') themeBtn.click();
+  } catch (_e) {}
+  /* camera pose first, THEN the saved 2D mode — restoring 2D before goTo() made
+     the boot scroll jump to the intake slot instead of opening at the top */
+  goTo(0, true);
+  try {
     if (localStorage.getItem('aria-mode') === '2d') setMode2D(true);
   } catch (_e) {}
-  goTo(0, true);
   requestAnimationFrame(loop);
   </script>
   <script src="/app.js"></script>
+  <!-- Mobile layer: device detection, bottom nav/drawer, swipe, accordion.
+       Must load after app.js (uses ariaStation + auth state). -->
+  <script src="/js/mobile.js" defer></script>
   <!-- ============ Isolated "Ask ARIA" Copilot entry point (spec §6.1) ============
        Fully self-contained: try/catch wrapped, opens the Copilot in a new tab
        with a short-lived signed token. Its failure can never affect the
@@ -2632,13 +2706,8 @@
   <script>
     window.ARIA_COPILOT_URL = window.ARIA_COPILOT_URL || "";
   </script>
-  <button id="askAriaButton" type="button" aria-label="Open the ARIA Recovery Copilot chat in a new tab">
-    <span class="ask-aria-fab-icon" aria-hidden="true">✚</span>
-    <span class="ask-aria-fab-copy">
-      <span class="ask-aria-fab-title">Ask ARIA</span>
-      <span class="ask-aria-fab-sub">Chat about your recovery</span>
-    </span>
-  </button>
+  <!-- Ask ARIA lives in the top navigation (✦ Ask ARIA), shared by 3D and 2D
+       modes. Wired by ask-aria.js; its failure can never affect the dashboard. -->
   <script src="/ask-aria.js"></script>
 </body>
 </html>

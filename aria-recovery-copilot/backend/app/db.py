@@ -60,6 +60,7 @@ class ConversationStore(Protocol):
     async def get_messages(self, session_id: str, limit: int = 20) -> list[dict]: ...
     async def record_escalation(self, session_id: str, message_id: str, detected_signal: str,
                                 main_app_alert_id: str) -> str: ...
+    async def link_alert_id(self, session_id: str, detected_signal: str, main_app_alert_id: str) -> None: ...
     async def close(self) -> None: ...
 
 
@@ -127,6 +128,14 @@ class MemoryConversationStore:
             "created_at": utc_now().isoformat(),
         })
         return escalation_id
+
+    async def link_alert_id(self, session_id: str, detected_signal: str, main_app_alert_id: str) -> None:
+        for escalation in reversed(self._escalations):
+            if (escalation["conversation_id"] == session_id
+                    and escalation["detected_signal"] == detected_signal
+                    and not escalation["main_app_alert_id"]):
+                escalation["main_app_alert_id"] = main_app_alert_id
+                return
 
     async def close(self) -> None:  # pragma: no cover
         return None
@@ -237,6 +246,19 @@ class MongoConversationStore:
         except Exception as error:
             logger.error("escalation persist failed: %s", error)
             raise StoreUnavailable("escalation persist failed") from error
+
+    async def link_alert_id(self, session_id: str, detected_signal: str, main_app_alert_id: str) -> None:
+        """Backfill the alert id onto the escalation record created before the
+        main-backend call (update, not a second record)."""
+        try:
+            await self._escalations.update_many(
+                {"conversation_id": session_id, "detected_signal": detected_signal,
+                 "main_app_alert_id": ""},
+                {"$set": {"main_app_alert_id": main_app_alert_id}},
+            )
+        except Exception as error:
+            logger.error("escalation alert-id backfill failed: %s", error)
+            raise StoreUnavailable("escalation backfill failed") from error
 
     async def close(self) -> None:  # pragma: no cover
         return None

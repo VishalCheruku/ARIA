@@ -59,7 +59,7 @@ async def run_escalation(
         alert_status = "sent" if alert_id else "sent_no_id"
         if alert_id:
             try:
-                await store.record_escalation(session_id, user_message_id, signal, alert_id)
+                await store.link_alert_id(session_id, signal, alert_id)
             except StoreUnavailable:
                 logger.error("escalation alert-id backfill failed")
     except MainBackendError as error:

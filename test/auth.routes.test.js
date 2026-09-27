@@ -49,7 +49,7 @@ test("registration stays disabled until configured", async () => {
     });
 
     assert.equal(response.status, 403);
-    assert.match(body.error, /Registration is not enabled/);
+    assert.match(body.error, /Registration is disabled/i);
   } finally {
     if (previous === undefined) delete process.env.AUTH_ALLOW_REGISTRATION;
     else process.env.AUTH_ALLOW_REGISTRATION = previous;

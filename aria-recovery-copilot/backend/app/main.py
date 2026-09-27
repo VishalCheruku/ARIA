@@ -128,8 +128,9 @@ async def build_state(app: FastAPI, settings: Settings, overrides: dict | None =
             app.state.kb = MongoKBStore(_EmptyCollection(), atlas_index=settings.atlas_vector_index)
 
     # --- LLM ---
+    # Optional: with no API key the answer path falls back to the local
+    # extractive RAG composer (app.answerer) — the Copilot stays fully usable.
     app.state.llm = overrides.get("llm")
-    app.state.llm_model_name = getattr(app.state.llm, "model_name", settings.zai_model)
     if app.state.llm is None:
         try:
             app.state.llm = ZaiClient(
@@ -140,14 +141,18 @@ async def build_state(app: FastAPI, settings: Settings, overrides: dict | None =
                 max_output_tokens=settings.llm_max_output_tokens,
             )
         except LLMError as error:
-            logger.error("LLM client unavailable: %s", error)
-            app.state.llm = None
+            logger.error("LLM client unavailable (%s) — answers use the local extractive RAG path", error)
+    app.state.llm_model_name = (
+        getattr(app.state.llm, "model_name", settings.zai_model) if app.state.llm is not None
+        else "local-extractive-rag"
+    )
 
     # --- Safety layer (pattern config + optional Stage-2 model) ---
     app.state.triage = overrides.get("triage")
+    stage2_enabled = settings.triage_stage2_enabled and app.state.llm is not None
     if app.state.triage is None:
-        stage2_enabled = settings.triage_stage2_enabled and app.state.llm is not None
         app.state.triage = Triage(stage2=app.state.llm, stage2_enabled=stage2_enabled)
+    app.state.triage_stage2_enabled = stage2_enabled
 
     # --- Resilient client to the main backend (the only outbound calls) ---
     app.state.main_client = overrides.get("main_client")

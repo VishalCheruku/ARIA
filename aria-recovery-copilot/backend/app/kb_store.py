@@ -78,6 +78,90 @@ def cosine_similarity(a: Sequence[float], b: Sequence[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
+class BM25Scorer:
+    """BM25 ranking over chunk texts, shared by the in-memory store and the
+    Mongo fallback path.
+
+    Used with the lexical dev embedder, because bag-of-words cosine between a
+    short query and long chunks dilutes into noise (see app/embeddings.py).
+    BM25's length normalization is the correct tool — and the in-memory store
+    (which the whole test suite exercises) has always used it, so the Mongo
+    fallback must rank identically or dev behaves differently from tests.
+    """
+
+    _K1 = 1.5
+    _B = 0.3  # gentler length normalization than IR default; chunks are topical
+    _COVERAGE_FLOOR = 0.5  # chunk must match at least half the query's IDF mass
+
+    def __init__(self, documents: Sequence[tuple[str, Sequence[str], str]]) -> None:
+        """`documents`: one (source_title, tags, text) tuple per chunk; the
+        position of each tuple is its document id for `score_query`."""
+        from collections import Counter
+
+        from app.embeddings import _content_tokens
+
+        self._index: list[tuple[Counter, int]] = []
+        for title, tags, text in documents:
+            # Title weighted 3x: chunk titles are the best topical summary.
+            tokens = _content_tokens(
+                f"{title} {title} {title}. {', '.join(tags)}. {text}"
+            )
+            self._index.append((Counter(tokens), len(tokens)))
+        self._avg_len = (sum(length for _, length in self._index) / max(1, len(self._index))) or 1.0
+        document_frequency: Counter = Counter()
+        for counts, _ in self._index:
+            document_frequency.update(counts.keys())
+        total = max(1, len(self._index))
+        self._idf = {
+            token: ((total - df + 0.5) / (df + 0.5) + 1.0)
+            for token, df in document_frequency.items()
+        }
+
+    def score_query(self, query_text: str) -> list[float]:
+        """Final 0-1 score per document: normalized BM25 scaled by the share of
+        the query's IDF mass the document covers. Documents below the coverage
+        floor score 0 (a chunk matching only a common fragment must not look
+        reliable)."""
+        from collections import Counter
+
+        from app.embeddings import _content_tokens
+
+        query_counts = Counter(_content_tokens(query_text))
+        if not query_counts:
+            return [0.0] * len(self._index)
+        avg_idf = sum(self._idf.values()) / max(1, len(self._idf))
+        # Unknown query terms are weighted at 2.5x the corpus-average IDF
+        # (calibrated on the test suite: unmatchable words are usually the
+        # informative ones).
+        query_idf_total = sum(self._idf.get(token, avg_idf * 2.5) for token in query_counts)
+        scores: list[float] = []
+        for counts, length in self._index:
+            raw = 0.0
+            for token, _query_tf in query_counts.items():
+                idf = self._idf.get(token)
+                if not idf:
+                    continue
+                tf = counts.get(token, 0)
+                if not tf:
+                    continue
+                raw += idf * tf * (self._K1 + 1.0) / (tf + self._K1 * (1.0 - self._B + self._B * length / self._avg_len))
+            if raw <= 0.0:
+                scores.append(0.0)
+                continue
+            matched_weight = sum(
+                self._idf[token] for token in query_counts if counts.get(token) and token in self._idf
+            )
+            coverage = matched_weight / query_idf_total if query_idf_total else 0.0
+            scores.append(0.0 if coverage < self._COVERAGE_FLOOR else self._normalize(raw) * coverage)
+        return scores
+
+    @staticmethod
+    def _normalize(score: float) -> float:
+        """Map BM25 (unbounded, ~0-15 for these chunks) to 0-1 for a stable
+        threshold: score_norm = s / (s + 4) -> 1.33 raw ≈ 0.25 norm."""
+        return score / (score + 4.0)
+
+
 class MongoKBStore:
     """kb_chunks in the Copilot's own Mongo database.
 
@@ -92,6 +176,7 @@ class MongoKBStore:
         self._fallback_seconds = atlas_fallback_seconds
         self._all_chunks_cache: tuple[float, list[dict]] | None = None
         self._cache_ttl = 60.0
+        self._bm25_cache: tuple[float, BM25Scorer] | None = None
 
     async def count(self) -> int:
         try:
@@ -108,14 +193,21 @@ class MongoKBStore:
         query_text: str = "",
     ) -> list[ChunkResult]:
         if time.monotonic() < self._atlas_disabled_until:
-            return await self._fallback_search(query_embedding, query_model, top_k, categories)
+            return await self._fallback_search(query_embedding, query_model, top_k, categories, query_text)
         try:
             results = await self._atlas_search(query_embedding, query_model, top_k, categories)
-            return results
+            if results:
+                return results
+            # Atlas returns an EMPTY result set (not an error) when the search
+            # index is missing or matches nothing. A missing index must never
+            # silently disable retrieval — fall back to the in-process scan.
+            logger.info("Atlas vectorSearch returned 0 rows; using in-process fallback")
+            self._atlas_disabled_until = time.monotonic() + self._fallback_seconds
+            return await self._fallback_search(query_embedding, query_model, top_k, categories, query_text)
         except Exception as error:
             logger.warning("Atlas Vector Search unavailable (%s); using in-process fallback", error)
             self._atlas_disabled_until = time.monotonic() + self._fallback_seconds
-            return await self._fallback_search(query_embedding, query_model, top_k, categories)
+            return await self._fallback_search(query_embedding, query_model, top_k, categories, query_text)
 
     async def _atlas_search(
         self,
@@ -163,8 +255,14 @@ class MongoKBStore:
         query_model: str,
         top_k: int,
         categories: Optional[list[str]],
+        query_text: str = "",
     ) -> list[ChunkResult]:
         chunks = await self._load_all()
+        if query_model.startswith("lexical"):
+            # Lexical dev embedder: BM25 ranking (same math as InMemoryKBStore,
+            # which the test suite exercises) — cosine on bag-of-words vectors
+            # dilutes a short query against long chunks into noise.
+            return self._search_bm25(chunks, query_text, top_k, categories)
         scored = []
         for chunk in chunks:
             self._validate_embedding_meta(chunk, query_model, len(query_embedding))
@@ -185,6 +283,51 @@ class MongoKBStore:
             )
             for score, chunk in scored[:top_k]
         ]
+
+    def _search_bm25(
+        self,
+        chunks: list[dict],
+        query_text: str,
+        top_k: int,
+        categories: Optional[list[str]],
+    ) -> list[ChunkResult]:
+        scorer = self._get_bm25_scorer()
+        scores = scorer.score_query(query_text)
+        scored: list[tuple[float, dict]] = []
+        for position, chunk in enumerate(chunks):
+            if categories and chunk.get("category") not in categories:
+                continue
+            if scores[position] <= 0.0:
+                continue
+            scored.append((scores[position], chunk))
+        scored.sort(key=lambda pair: pair[0], reverse=True)
+        return [
+            ChunkResult(
+                id=str(chunk["_id"]),
+                source_title=chunk.get("source_title", ""),
+                source_type=chunk.get("source_type", ""),
+                category=chunk.get("category", ""),
+                text=chunk.get("text", ""),
+                tags=list(chunk.get("tags") or []),
+                score=score,
+            )
+            for score, chunk in scored[:top_k]
+        ]
+
+    def _get_bm25_scorer(self) -> BM25Scorer:
+        """Build (or rebuild after a cache refresh) the BM25 index over the
+        currently cached chunk documents."""
+        chunks = self._all_chunks_cache[1] if self._all_chunks_cache else []
+        cache_stamp = self._all_chunks_cache[0] if self._all_chunks_cache else 0.0
+        if self._bm25_cache is None or self._bm25_cache[0] != cache_stamp:
+            self._bm25_cache = (
+                cache_stamp,
+                BM25Scorer([
+                    (chunk.get("source_title", ""), list(chunk.get("tags") or []), chunk.get("text", ""))
+                    for chunk in chunks
+                ]),
+            )
+        return self._bm25_cache[1]
 
     async def _load_all(self) -> list[dict]:
         now = time.monotonic()
@@ -223,65 +366,11 @@ class InMemoryKBStore:
         self._records = [self._with_id(record, index) for index, record in enumerate(records)]
         self.model_name = records[0].embedding_model if records else ""
         self._scoring = scoring
-        self._index: list[tuple[dict, int]] = []
+        self._bm25: BM25Scorer | None = None
         if scoring == "bm25":
-            self._build_bm25_index()
-
-    # ---- BM25 machinery ----
-    _K1 = 1.5
-    _B = 0.3  # gentler length normalization than IR default; chunks are topical
-    _COVERAGE_FLOOR = 0.5  # chunk must match at least half the query's IDF mass
-
-    def _build_bm25_index(self) -> None:
-        from collections import Counter
-
-        self._index = []
-        for record in self._records:
-            # Title weighted 3x: chunk titles are the best topical summary.
-            tokens = self._tokenize(
-                f"{record.source_title} {record.source_title} {record.source_title}. "
-                f"{', '.join(record.tags)}. {record.text}"
-            )
-            counts = Counter(tokens)
-            self._index.append((dict(counts), len(tokens)))
-        self._avg_len = (sum(length for _, length in self._index) / max(1, len(self._index))) or 1.0
-        document_frequency: Counter = Counter()
-        for counts, _ in self._index:
-            document_frequency.update(counts.keys())
-        total = max(1, len(self._index))
-        self._idf = {token: ((total - df + 0.5) / (df + 0.5) + 1.0) for token, df in document_frequency.items()}
-        self._max_idf = max(self._idf.values(), default=1.0)
-
-    @staticmethod
-    def _tokenize(text: str) -> list[str]:
-        from app.embeddings import _content_tokens
-
-        return _content_tokens(text)
-
-    def _bm25_scores(self, query_text: str) -> list[tuple[float, int]]:
-        from collections import Counter
-
-        query_counts = Counter(self._tokenize(query_text))
-        scores: list[tuple[float, int]] = []
-        for position, (counts, length) in enumerate(self._index):
-            score = 0.0
-            for token, query_tf in query_counts.items():
-                idf = self._idf.get(token)
-                if not idf:
-                    continue
-                tf = counts.get(token, 0)
-                if not tf:
-                    continue
-                score += idf * tf * (self._K1 + 1.0) / (tf + self._K1 * (1.0 - self._B + self._B * length / self._avg_len))
-            scores.append((score, position))
-        scores.sort(key=lambda pair: pair[0], reverse=True)
-        return scores
-
-    @staticmethod
-    def _normalize_bm25(score: float) -> float:
-        """Map BM25 (unbounded, ~0-15 for these chunks) to 0-1 for a stable
-        threshold: score_norm = s / (s + 4) -> 1.33 raw ≈ 0.25 norm."""
-        return score / (score + 4.0)
+            self._bm25 = BM25Scorer([
+                (record.source_title, record.tags, record.text) for record in self._records
+            ])
 
     @staticmethod
     def _with_id(record: KBRecord, index: int) -> KBRecord:
@@ -313,40 +402,20 @@ class InMemoryKBStore:
         return [self._to_result(score, record) for score, record in scored[:top_k]]
 
     def _search_bm25(self, query_text: str, top_k: int, categories: Optional[list[str]]) -> list[ChunkResult]:
-        from collections import Counter
-
-        query_counts = Counter(self._tokenize(query_text))
-        if not query_counts:
-            return []
-        # Coverage weighting: a chunk that matches only a common fragment of
-        # the query ("open" in "when does the cafeteria open?") must not look
-        # reliable. Each candidate's score is scaled by the share of the
-        # query's IDF mass its matched terms cover; unknown query terms are
-        # weighted at 2.5x the corpus-average IDF (calibrated on the test
-        # suite: unmatchable words are usually the informative ones).
-        avg_idf = sum(self._idf.values()) / max(1, len(self._idf))
-        query_idf_total = sum(self._idf.get(token, avg_idf * 2.5) for token in query_counts)
-        ranked = self._bm25_scores(query_text)
-        results = []
-        for score, position in ranked:
-            if score <= 0.0:
-                break
-            counts, _length = self._index[position]
-            matched_weight = sum(
-                self._idf[token] for token in query_counts if counts.get(token) and token in self._idf
-            )
-            coverage = matched_weight / query_idf_total if query_idf_total else 0.0
-            if coverage < self._COVERAGE_FLOOR:
+        # Ranking lives in the shared BM25Scorer so the Mongo fallback path
+        # (production, no Atlas Vector Search) behaves identically to this
+        # test/dev store.
+        assert self._bm25 is not None
+        scores = self._bm25.score_query(query_text)
+        scored = []
+        for position, record in enumerate(self._records):
+            if scores[position] <= 0.0:
                 continue
-            final = self._normalize_bm25(score) * coverage
-            record = self._records[position]
             if categories and record.category not in categories:
                 continue
-            results.append(self._to_result(final, record))
-            if len(results) >= top_k:
-                break
-        results.sort(key=lambda chunk: chunk.score, reverse=True)
-        return results
+            scored.append((scores[position], record))
+        scored.sort(key=lambda pair: pair[0], reverse=True)
+        return [self._to_result(score, record) for score, record in scored[:top_k]]
 
     @staticmethod
     def _to_result(score: float, record: KBRecord) -> ChunkResult:

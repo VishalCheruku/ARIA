@@ -24,6 +24,7 @@ async def health(request: Request) -> dict:
     except Exception as error:  # store down must not fail liveness
         kb_error = str(error)[:200]
 
+    llm = getattr(state, "llm", None)
     return {
         "status": "ok",
         "service": "aria-recovery-copilot",
@@ -32,6 +33,7 @@ async def health(request: Request) -> dict:
         "kb_chunks": kb_count,
         "kb_error": kb_error,
         "embedding_provider": getattr(state.embedder, "name", "unconfigured"),
+        "answer_mode": "llm" if llm is not None else "local-extractive",
         "llm_model": getattr(state, "llm_model_name", "unconfigured"),
         "triage_stage2_enabled": bool(getattr(state, "triage_stage2_enabled", False)),
         "main_backend_circuit": state.main_client.breaker.state,
