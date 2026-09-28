@@ -14,8 +14,9 @@
                   gradient is revealed only around the pointer
                   (TextHoverEffect twin). Both stay alive for the whole chat.
     3. CARD     — right as the splash fades, the chat card rises from below
-                  the viewport to the middle while rotating exactly once
-                  (1.55s, decelerating). It then 3-D tilts with the pointer
+                  the viewport to the middle like a card lying asleep on the
+                  floor, hinging upright as it comes (1.55s, decelerating,
+                  no spin). It then 3-D tilts with the pointer
                   (perspective 1000px, ±10°, the 3d-card twin). Title
                   "Ask the ARIA Bot" sits at translateZ(50), the composer at
                   translateZ(20) — like the original CardItems.

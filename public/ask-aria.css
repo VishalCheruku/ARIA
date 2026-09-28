@@ -2,8 +2,8 @@
   "Ask ARIA" top-nav button — isolated Copilot entry point.
   Design: Uiverse.io by Navarog21, adapted for ARIA (ridge border, 1s ease,
   inset glow on hover). No fill at rest — the button sits straight on the
-  topbar; on hover it slowly (1s) fills with the INTAKE gate pink-red
-  (#ed2f34, the station accent in the 3D world) like a gate lighting up.
+  topbar; on hover it slowly (1s) fills with the same blue as its ridge
+  border (#149CEa) so the button lights up in its own colour.
   Text ink follows the topbar theme (--chrome-ink) so the transparent rest
   state stays readable in both night and day themes.
   The button works in both 3D and 2D modes because the topbar is shared.
@@ -27,12 +27,12 @@ button.ask-aria-action {
 }
 
 button.ask-aria-action:hover {
-  border: 3px ridge #ff5c66; /* ridge border warms up with the gate */
-  background-color: #ed2f34; /* fades in slowly via the 1s transition */
+  border: 3px ridge #149CEA; /* border keeps its own blue */
+  background-color: #149CEA; /* fades in slowly via the 1s transition */
   color: #ffffff;
   box-shadow:
-    inset 0px 0px 25px rgba(122, 8, 20, 0.55),
-    0 0 18px rgba(237, 47, 52, 0.35);
+    inset 0px 0px 25px rgba(9, 70, 110, 0.55),
+    0 0 18px rgba(20, 156, 234, 0.35);
 }
 
 button.ask-aria-action:disabled {
@@ -50,7 +50,7 @@ body.theme-day button.ask-aria-action span {
 }
 
 button.ask-aria-action:hover span {
-  color: #ffd9da;
+  color: #e8f6ff;
 }
 
 /* ============================================================================
@@ -61,8 +61,10 @@ button.ask-aria-action:hover span {
    Layer order inside .aae-root:
      1 .aae-stars        full-page sparse sparkles (density ~100)
      2 .aae-wordmark     SVG "ARIA" gradient stroke revealed around the pointer
-     3 .aae-card-layer   the chat card — rises from the bottom rotating once,
-                         then 3-D tilts with the pointer (perspective 1000px)
+     3 .aae-card-layer   the chat card — starts lying flat on the "floor"
+                         below the viewport and rises up to the middle,
+                         unfolding face-forward (no spin), then 3-D tilts
+                         with the pointer (perspective 1000px)
      4 .aae-splash       black intro ("Ask ARIA" + dense sparkle band), fades
                          away slowly and is then removed from the DOM
    ========================================================================== */
@@ -168,13 +170,18 @@ body.aae-lock {
   display: grid;
   place-items: center;
   pointer-events: none;
+  /* gives the entrance its depth: the card really reads as lying on the
+     floor far below before it rises up to the middle */
+  perspective: 1400px;
 }
 
 .aae-card-enter {
   opacity: 0;
+  transform-origin: 50% 100%;
 }
 
-/* rises from below the viewport to the middle while rotating exactly once */
+/* rises from below the viewport to the middle like a card lying asleep on
+   the floor, hinging upright as it comes — no spinning */
 .aae-card-enter.aae-run {
   animation: aae-card-rise 1.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -182,14 +189,14 @@ body.aae-lock {
 @keyframes aae-card-rise {
   0% {
     opacity: 0;
-    transform: translate3d(0, 112vh, 0) rotate(0deg);
+    transform: translate3d(0, 112vh, 0) rotateX(74deg) scale(0.94);
   }
-  5% {
+  6% {
     opacity: 1;
   }
   100% {
     opacity: 1;
-    transform: translate3d(0, 0, 0) rotate(360deg);
+    transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
   }
 }
 
@@ -352,7 +359,7 @@ body.aae-lock {
   max-width: 86%;
   padding: 10px 14px;
   border-radius: 14px;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -403,7 +410,7 @@ body.aae-lock {
 
 .aae-sources {
   max-width: 86%;
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.9;
   color: rgba(226, 232, 240, 0.45);
 }

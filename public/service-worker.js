@@ -11,7 +11,7 @@
    ============================================================================ */
 /* Bump on every static-asset change: activate deletes every cache that does
    not start with this version, so users get the new css/js immediately. */
-const VERSION = "aria-v9";
+const VERSION = "aria-v10";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const API_CACHE = `${VERSION}-api`;

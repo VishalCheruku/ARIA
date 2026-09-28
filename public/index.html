@@ -16,7 +16,7 @@
   </noscript>
   <link rel="stylesheet" href="/home-station.css?v=3" />
   <!-- Isolated Copilot entry point (Ask ARIA): its own styles, never shared with the dashboard -->
-  <link rel="stylesheet" href="/ask-aria.css?v=9" />
+  <link rel="stylesheet" href="/ask-aria.css?v=10" />
   <!-- Mobile-responsive layer: breakpoints + 2D fallback UI (loads last, overrides desktop) -->
   <link rel="stylesheet" href="/mobile-responsive.css?v=2" />
 </head>
@@ -65,7 +65,7 @@
       </span>
     </a>
     <div class="topbar-right">
-      <button class="top-action ask-aria-action" id="askAriaHomeButton" type="button" title="Chat about your recovery">✦ Ask ARIA <span>↗</span></button>
+      <button class="top-action ask-aria-action" id="askAriaHomeButton" type="button" title="Chat about your recovery">Ask ARIA <span>↗</span></button>
       <button class="top-action theme-toggle" id="themeToggle" type="button">☀ DAY</button>
       <button class="top-action dashboard-action" id="dashboardButton" type="button">Dashboard <span>↗</span></button>
       <button class="top-action auth-action" id="loginButton" type="button">Login <span>↗</span></button>
@@ -2706,6 +2706,6 @@
   </script>
   <!-- Ask ARIA lives in the top navigation (✦ Ask ARIA), shared by 3D and 2D
        modes. Wired by ask-aria.js; its failure can never affect the dashboard. -->
-  <script src="/ask-aria.js?v=5"></script>
+  <script src="/ask-aria.js?v=6"></script>
 </body>
 </html>

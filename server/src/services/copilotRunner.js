@@ -50,6 +50,42 @@ function log(message) {
   console.log(`[copilot] ${message}`);
 }
 
+/* Bare names ("python3", "python") must be resolved against PATH —
+   fs.accessSync on a bare name only checks the current working directory,
+   which made every PATH interpreter invisible (including the Docker
+   image's COPILOT_PYTHON=python3). Windows needs PATHEXT handling:
+   accessSync does not append .exe on its own. */
+const PATH_EXTS = process.platform === "win32"
+  ? (String(process.env.PATHEXT || ".EXE;.CMD;.BAT").split(";").filter(Boolean))
+  : [""];
+
+function isExecutable(candidate) {
+  const hasExtension = Boolean(path.extname(candidate));
+  const suffixes = hasExtension ? [""] : ["", ...PATH_EXTS];
+  if (path.isAbsolute(candidate)) {
+    return suffixes.some(suffix => {
+      try {
+        fs.accessSync(candidate + suffix, fs.constants.X_OK);
+        return true;
+      } catch (_error) {
+        return false;
+      }
+    });
+  }
+  const dirs = String(process.env.PATH || "").split(path.delimiter).filter(Boolean);
+  for (const dir of dirs) {
+    for (const suffix of suffixes) {
+      try {
+        fs.accessSync(path.join(dir, candidate + suffix), fs.constants.X_OK);
+        return true;
+      } catch (_error) {
+        /* keep scanning PATH */
+      }
+    }
+  }
+  return false;
+}
+
 function findPython() {
   const candidates = [];
   if (process.env.COPILOT_PYTHON) candidates.push(process.env.COPILOT_PYTHON);
@@ -58,12 +94,7 @@ function findPython() {
     : path.join(BACKEND_DIR, ".venv", "bin", "python");
   candidates.push(venvPython, "python3", "python");
   for (const candidate of candidates) {
-    try {
-      fs.accessSync(candidate, fs.constants.X_OK);
-      return candidate;
-    } catch (_error) {
-      /* try the next candidate */
-    }
+    if (isExecutable(candidate)) return candidate;
   }
   return null;
 }
