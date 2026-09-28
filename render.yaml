@@ -16,7 +16,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health
-    plan: starter          # pick a plan that fits; starter is fine for a pilot
+    plan: free          # pick a plan that fits; starter is fine for a pilot
     envVars:
       # --- main app ---
       - key: MONGODB_URI
